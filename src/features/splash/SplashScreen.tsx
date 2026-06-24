@@ -6,11 +6,12 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackNavigationProp } from "../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../theme";
+import { OnboardingStorage } from "../onboarding/onboardingStorage";
 
 const { width } = Dimensions.get("window");
 const SPLASH_DURATION = 2000; // Match this with animation duration
@@ -29,24 +30,20 @@ const SplashScreen: React.FC = () => {
     }).start();
 
     // Navigate after splash completes
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       if (isMountedRef.current) {
-        // TODO:
         // Check onboarding completion status from AsyncStorage
-        // If onboarding is not completed:
-        //   navigation.replace("Onboarding")
-        // If onboarding is completed:
-        //   Check Firebase authentication currentUser
-        //   If no authenticated user:
-        //     navigation.replace("Login")
-        //   If authenticated user exists:
-        //     Fetch Firestore user document
-        //     Check accountStatus:
-        //       - "pending" -> navigate.replace("PendingApproval")
-        //       - "approved" -> navigate.replace("Dashboard")
-        //       - "rejected" -> navigate.replace("RejectedAccount")
+        const onboardingCompleted = await OnboardingStorage.getCompleted();
 
-        navigation.replace("Onboarding");
+        if (onboardingCompleted) {
+          // User already completed onboarding, go to Login
+          // TODO: In future, check Firebase authentication here
+          // and navigate based on auth status
+          navigation.replace("Login");
+        } else {
+          // First time user, show onboarding
+          navigation.replace("Onboarding");
+        }
       }
     }, SPLASH_DURATION);
 
@@ -68,7 +65,7 @@ const SplashScreen: React.FC = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Image
-          source={require("../../assets/images/logo.png")}
+          source={require("../../../assets/images/logo.png")}
           style={styles.logo}
           resizeMode="contain"
         />
