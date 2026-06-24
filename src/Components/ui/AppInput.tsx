@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Image } from "react-native";
 import {
   StyleProp,
   TextInput,
@@ -70,7 +71,7 @@ export const AppInput: React.FC<AppInputProps> = ({
       : COLORS.border;
 
   const containerViewStyle: StyleProp<ViewStyle> = [
-    { marginBottom: SPACING.md },
+    { marginBottom: SPACING.md, width: "100%" },
     containerStyle,
   ];
 
@@ -81,8 +82,25 @@ export const AppInput: React.FC<AppInputProps> = ({
     borderColor: COLORS.inputBorder,
     borderRadius: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    backgroundColor: COLORS.inputBackground,
+    backgroundColor: COLORS.white,
     height: inputHeight,
+  };
+
+  const defaultIconSize = {};
+
+  const mergeIconStyle = (node?: React.ReactNode) => {
+    if (!node) return null;
+    if (React.isValidElement(node) && node.type === Image) {
+      const n = node as any;
+      const childStyle = n.props?.style
+        ? [defaultIconSize, n.props.style]
+        : defaultIconSize;
+      return React.cloneElement(
+        node as React.ReactElement,
+        { style: childStyle } as any,
+      );
+    }
+    return node;
   };
 
   const textInputStyle: StyleProp<TextStyle> = [
@@ -122,7 +140,9 @@ export const AppInput: React.FC<AppInputProps> = ({
 
       <View style={inputContainerStyle}>
         {leftIcon && (
-          <View style={{ marginRight: SPACING.sm }}>{leftIcon}</View>
+          <View style={{ marginRight: SPACING.sm }}>
+            {mergeIconStyle(leftIcon)}
+          </View>
         )}
 
         <TextInput
@@ -143,7 +163,7 @@ export const AppInput: React.FC<AppInputProps> = ({
             style={{ padding: SPACING.xs }}
           >
             {showPassword
-              ? (passwordToggleIcons?.hidden ?? (
+              ? (mergeIconStyle(passwordToggleIcons?.hidden) ?? (
                   <Text
                     style={{
                       color: COLORS.primary,
@@ -153,7 +173,7 @@ export const AppInput: React.FC<AppInputProps> = ({
                     Hide
                   </Text>
                 ))
-              : (passwordToggleIcons?.visible ?? (
+              : (mergeIconStyle(passwordToggleIcons?.visible) ?? (
                   <Text
                     style={{
                       color: COLORS.primary,
@@ -166,7 +186,9 @@ export const AppInput: React.FC<AppInputProps> = ({
           </TouchableOpacity>
         ) : (
           rightIcon && (
-            <View style={{ marginLeft: SPACING.sm }}>{rightIcon}</View>
+            <View style={{ marginLeft: SPACING.sm }}>
+              {mergeIconStyle(rightIcon)}
+            </View>
           )
         )}
       </View>
