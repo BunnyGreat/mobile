@@ -1,12 +1,16 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Image, Text, StyleSheet } from "react-native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppButton from "../../../../components/ui/AppButton";
 import { useNavigation } from "@react-navigation/native";
+import { useRegisterStore } from "./store/register.store";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../theme";
 
 const RegistrationSuccessScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const referenceId = useRegisterStore((state) => state.referenceId);
+
+  useEffect(() => {}, [referenceId]);
 
   const handleReturnToLogin = () => {
     // Call clearRegistration if the app exposes it on global scope
@@ -48,7 +52,9 @@ const RegistrationSuccessScreen: React.FC = () => {
           account has been approved.
         </Text>
 
-        <Text style={styles.referenceId}>Reference ID: N/A</Text>
+        <Text style={styles.referenceId}>
+          Reference ID: {referenceId ?? "N/A"}
+        </Text>
 
         <View style={styles.contentBlock}>
           <View style={styles.statusBadge}>

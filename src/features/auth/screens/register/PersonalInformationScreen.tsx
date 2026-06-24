@@ -1,16 +1,20 @@
 import React from "react";
 import { StyleSheet } from "react-native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
-import PersonalInformationForm from "../../../auth/screens/register/components/PersonalInfoForm";
+import PersonalInformationForm from "./components/PersonalInfoForm";
 import { useNavigation } from "@react-navigation/native";
-import { COLORS, SPACING } from "../../../../theme";
+import { COLORS } from "../../../../theme";
+import { useRegisterStore } from "./store/register.store";
+import type { RegistrationPersonalInformation } from "./types/register.types";
 
 const PersonalInformationScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const savePersonalInformation = useRegisterStore(
+    (state) => state.savePersonalInformation,
+  );
 
-  const handleNext = () => {
-    // UI-only placeholder
-    console.log("Personal info submit (placeholder)");
+  const handleNext = (data: RegistrationPersonalInformation) => {
+    savePersonalInformation(data);
     navigation.navigate("ResidenceInformation");
   };
 

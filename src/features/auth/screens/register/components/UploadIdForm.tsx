@@ -1,28 +1,173 @@
 import React, { useState } from "react";
-import { View, StyleSheet, Text, TouchableOpacity, Image } from "react-native";
+import {
+  View,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import AppButton from "../../../../../components/ui/AppButton";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../../theme";
 
+import type { RegistrationDocuments } from "../types/register.types";
+
 type Props = {
-  onNext?: () => void;
+  onNext?: (data: RegistrationDocuments) => void;
   onBack?: () => void;
+  isLoading?: boolean;
 };
 
-const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
+const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
   const [frontUri, setFrontUri] = useState<string | null>(null);
   const [backUri, setBackUri] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [frontError, setFrontError] = useState("");
+  const [backError, setBackError] = useState("");
+  const [checkboxError, setCheckboxError] = useState("");
+
+  const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
+  const requestGalleryPermission = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission required",
+        "Gallery access is required to select ID photos.",
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const requestCameraPermission = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission required",
+        "Camera access is required to take ID photos.",
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const validateAndSaveImage = async (
+    uri: string,
+    setUri: React.Dispatch<React.SetStateAction<string | null>>,
+    setError: React.Dispatch<React.SetStateAction<string>>,
+  ) => {
+    const compressedResult = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1200, height: 1200 } }],
+      {
+        compress: 0.7,
+        format: ImageManipulator.SaveFormat.JPEG,
+      },
+    );
+
+    if (!compressedResult.uri) {
+      Alert.alert("Image processing failed.");
+      return;
+    }
+
+    const fileInfo = await fetch(compressedResult.uri);
+    const blob = await fileInfo.blob();
+    const size = blob.size;
+
+    if (size > MAX_FILE_SIZE) {
+      Alert.alert("Image must be 5MB or less.");
+      return;
+    }
+
+    setUri(compressedResult.uri);
+    setError("");
+  };
+
+  const pickImage = async (
+    source: "gallery" | "camera",
+    setUri: React.Dispatch<React.SetStateAction<string | null>>,
+    setError: React.Dispatch<React.SetStateAction<string>>,
+  ) => {
+    const hasPermission =
+      source === "gallery"
+        ? await requestGalleryPermission()
+        : await requestCameraPermission();
+
+    if (!hasPermission) return;
+
+    const result =
+      source === "gallery"
+        ? await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ["images"],
+            allowsEditing: false,
+            quality: 0.7,
+          })
+        : await ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            allowsEditing: false,
+            quality: 0.7,
+          });
+
+    if (result.canceled) return;
+
+    const asset = result.assets?.[0];
+    const uri = asset?.uri;
+    if (!uri) return;
+
+    await validateAndSaveImage(uri, setUri, setError);
+  };
+
+  const showUploadOptions = (
+    title: string,
+    setUri: React.Dispatch<React.SetStateAction<string | null>>,
+    setError: React.Dispatch<React.SetStateAction<string>>,
+  ) => {
+    Alert.alert(title, "Choose image source", [
+      {
+        text: "Gallery",
+        onPress: () => pickImage("gallery", setUri, setError),
+      },
+      {
+        text: "Camera",
+        onPress: () => pickImage("camera", setUri, setError),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
 
   const handleUploadFront = () => {
-    console.log("Upload front ID");
+    showUploadOptions("Upload Front Side of ID", setFrontUri, setFrontError);
   };
 
   const handleUploadBack = () => {
-    console.log("Upload back ID");
+    showUploadOptions("Upload Back Side of ID", setBackUri, setBackError);
   };
 
   const handleSubmit = () => {
-    if (onNext) onNext();
+    if (isLoading) {
+      return;
+    }
+
+    const frontValidation = frontUri ? "" : "Front side of ID is required.";
+    const backValidation = backUri ? "" : "Back side of ID is required.";
+    const checkboxValidation = checked
+      ? ""
+      : "You must confirm that the information is true.";
+
+    setFrontError(frontValidation);
+    setBackError(backValidation);
+    setCheckboxError(checkboxValidation);
+
+    if (!frontValidation && !backValidation && !checkboxValidation) {
+      if (onNext)
+        onNext({
+          frontIdUri: frontUri,
+          backIdUri: backUri,
+        });
+    }
   };
 
   return (
@@ -77,7 +222,10 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
 
       {/* Front Side of ID */}
       <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>Front Side of ID</Text>
+        <Text style={styles.fieldLabel}>
+          Front Side of ID
+          <Text style={styles.required}>*</Text>
+        </Text>
         <TouchableOpacity
           style={[styles.uploadField, frontUri && styles.uploadFieldActive]}
           activeOpacity={0.8}
@@ -106,11 +254,15 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
             </View>
           )}
         </TouchableOpacity>
+        {frontError ? <Text style={styles.errorText}>{frontError}</Text> : null}
       </View>
 
       {/* Back Side of ID */}
       <View style={styles.fieldContainer}>
-        <Text style={styles.fieldLabel}>Back Side of ID</Text>
+        <Text style={styles.fieldLabel}>
+          Back Side of ID
+          <Text style={styles.required}>*</Text>
+        </Text>
         <TouchableOpacity
           style={[styles.uploadField, backUri && styles.uploadFieldActive]}
           activeOpacity={0.8}
@@ -139,6 +291,7 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
             </View>
           )}
         </TouchableOpacity>
+        {backError ? <Text style={styles.errorText}>{backError}</Text> : null}
       </View>
 
       {/* Accepted IDs Card */}
@@ -160,7 +313,10 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
         <TouchableOpacity
           style={styles.checkboxContainer}
           activeOpacity={0.8}
-          onPress={() => setChecked(!checked)}
+          onPress={() => {
+            setChecked((prev) => !prev);
+            if (!checked) setCheckboxError("");
+          }}
         >
           <View style={[styles.checkbox, checked && styles.checkboxChecked]}>
             {checked && <Text style={styles.checkboxTick}>✓</Text>}
@@ -171,6 +327,9 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
             under local ordinance.
           </Text>
         </TouchableOpacity>
+        {checkboxError ? (
+          <Text style={styles.errorText}>{checkboxError}</Text>
+        ) : null}
       </View>
 
       {/* Bottom Actions */}
@@ -180,7 +339,8 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
           onPress={handleSubmit}
           variant="primary"
           fullWidth
-          disabled={!checked || !frontUri || !backUri}
+          disabled={isLoading || !checked || !frontUri || !backUri}
+          loading={isLoading}
           style={styles.nextButton}
         />
       </View>
@@ -377,6 +537,15 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.h16,
     fontFamily: FONT_FAMILY.bold,
     color: COLORS.heading,
+  },
+  required: {
+    color: COLORS.danger,
+  },
+  errorText: {
+    marginTop: SPACING.xs,
+    color: COLORS.danger,
+    fontSize: FONT_SIZE.body12,
+    fontFamily: FONT_FAMILY.regular,
   },
   noticeCard: {
     marginTop: SPACING.xl,

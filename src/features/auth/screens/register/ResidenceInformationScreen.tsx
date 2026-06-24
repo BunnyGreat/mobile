@@ -3,13 +3,18 @@ import { StyleSheet } from "react-native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import ResidenceInfoForm from "./components/ResidenceInfoForm";
 import { useNavigation } from "@react-navigation/native";
-import { COLORS, SPACING } from "../../../../theme";
+import { COLORS } from "../../../../theme";
+import { useRegisterStore } from "./store/register.store";
+import type { RegistrationResidenceInformation } from "./types/register.types";
 
 const ResidenceInformationScreen: React.FC = () => {
   const navigation = useNavigation<any>();
+  const saveResidenceInformation = useRegisterStore(
+    (state) => state.saveResidenceInformation,
+  );
 
-  const handleNext = () => {
-    console.log("Residence info submit (placeholder)");
+  const handleNext = (data: RegistrationResidenceInformation) => {
+    saveResidenceInformation(data);
     navigation.navigate("UploadIdentification");
   };
 

@@ -6,20 +6,48 @@ import AppButton from "../../../../components/ui/AppButton";
 import FormOtpInput from "../../../../components/forms/FormOtpInput";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
+import { RegistrationStore, useRegisterStore } from "./store/register.store";
+import { sendRegistrationOtpEmail } from "./services/register.service";
 
 const RegisterOtpScreen: React.FC = () => {
-  const [otp, setOtp] = useState("");
-  const [countdown, setCountdown] = useState(180);
-  const [email, setEmail] = useState("user@example.com");
+  const [otp, setOtpValue] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const email = useRegisterStore((state: RegistrationStore) => state.email);
+  const otpExpiresAt = useRegisterStore(
+    (state: RegistrationStore) => state.otpExpiresAt,
+  );
+  const setOtp = useRegisterStore((state: RegistrationStore) => state.setOtp);
+  const verifyOtp = useRegisterStore(
+    (state: RegistrationStore) => state.verifyOtp,
+  );
+  const [countdown, setCountdown] = useState(
+    otpExpiresAt
+      ? Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000))
+      : 180,
+  );
+  const [resendCooldown, setResendCooldown] = useState(60);
+  const [isSending, setIsSending] = useState(false);
   const navigation = useNavigation<RootStackNavigationProp>();
 
   useEffect(() => {
+    if (otpExpiresAt) {
+      setCountdown(Math.max(0, Math.ceil((otpExpiresAt - Date.now()) / 1000)));
+    }
+
     const timer = setInterval(() => {
       setCountdown((current) => Math.max(0, current - 1));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [otpExpiresAt]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const resendTimer = setInterval(() => {
+      setResendCooldown((current) => Math.max(0, current - 1));
+    }, 1000);
+    return () => clearInterval(resendTimer);
+  }, [resendCooldown]);
 
   const formatCountdown = () => {
     const minutes = Math.floor(countdown / 60);
@@ -29,12 +57,59 @@ const RegisterOtpScreen: React.FC = () => {
       .padStart(2, "0")}`;
   };
 
-  const handleResendCode = () => {
-    console.log("Resend Code");
+  const otpExpired = otpExpiresAt !== null && Date.now() >= otpExpiresAt;
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0 || !email) return;
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const createdAt = Date.now();
+    const expiresAt = createdAt + 5 * 60 * 1000;
+
+    setIsSending(true);
+    try {
+      await sendRegistrationOtpEmail(email, otp);
+      setOtp(otp, createdAt, expiresAt);
+      setOtpValue("");
+      setCountdown(5 * 60);
+      setResendCooldown(60);
+      setOtpError("");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to resend verification code.";
+      setOtpError(message);
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleVerifyContinue = () => {
+    if (!otp) {
+      setOtpError("Enter the 6-digit verification code.");
+      return;
+    }
+
+    if (otpExpired) {
+      setOtpError("OTP has expired. Please request a new code.");
+      return;
+    }
+
+    if (!verifyOtp(otp)) {
+      setOtpError("Invalid verification code.");
+      return;
+    }
+
+    setOtpError("");
     navigation.navigate("PersonalInformation");
+  };
+
+  const handleOtpChange = (value: string) => {
+    setOtpValue(value);
+    if (otpError && value.length === 6) {
+      setOtpError("");
+    }
   };
 
   return (
@@ -73,11 +148,18 @@ const RegisterOtpScreen: React.FC = () => {
           <FormOtpInput
             length={6}
             value={otp}
-            onChange={setOtp}
+            onChange={handleOtpChange}
             autoFocus
             containerStyle={styles.otpContainer}
             accessibilityLabel="Register verification code"
           />
+          {otpError || otpExpired ? (
+            <Text style={styles.errorText}>
+              {otpExpired
+                ? "OTP has expired. Please request a new code."
+                : otpError}
+            </Text>
+          ) : null}
         </View>
 
         <View style={styles.timerContainer}>
@@ -88,8 +170,17 @@ const RegisterOtpScreen: React.FC = () => {
 
         <View style={styles.resendRow}>
           <Text style={styles.resendText}>Didn't receive the code? </Text>
-          <TouchableOpacity onPress={handleResendCode}>
-            <Text style={styles.resendLink}>Resend Code</Text>
+          <TouchableOpacity
+            onPress={handleResendCode}
+            disabled={resendCooldown > 0 || isSending}
+          >
+            <Text style={styles.resendLink}>
+              {resendCooldown > 0
+                ? `Resend Code (${resendCooldown}s)`
+                : isSending
+                  ? "Resending..."
+                  : "Resend Code"}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -99,6 +190,7 @@ const RegisterOtpScreen: React.FC = () => {
           variant="primary"
           fullWidth
           style={styles.verifyButton}
+          disabled={otpExpired}
         />
 
         <View style={styles.infoBox}>
@@ -267,6 +359,13 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.regular,
     color: COLORS.paragraph,
     lineHeight: FONT_SIZE.body14 * 1.5,
+  },
+  errorText: {
+    width: "100%",
+    marginTop: SPACING.sm,
+    fontSize: FONT_SIZE.body12,
+    fontFamily: FONT_FAMILY.regular,
+    color: COLORS.danger,
   },
   bottomContent: {
     width: "100%",

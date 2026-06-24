@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
@@ -6,12 +6,30 @@ import AppInput from "../../../../components/ui/AppInput";
 import AppButton from "../../../../components/ui/AppButton";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
+import { RegistrationStore, useRegisterStore } from "./store/register.store";
+import {
+  checkEmailAvailability,
+  sendRegistrationOtpEmail,
+} from "./services/register.service";
 
 const RegisterScreen: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
+  const [emailExists, setEmailExists] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [emailCheckedValue, setEmailCheckedValue] = useState("");
+  const emailCheckPromiseRef = useRef<Promise<boolean> | null>(null);
+  const emailCheckTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isContinuePressedRef = useRef(false);
   const navigation = useNavigation<RootStackNavigationProp>();
+  const saveAccountCredentials = useRegisterStore(
+    (state: RegistrationStore) => state.saveAccountCredentials,
+  );
+  const setOtp = useRegisterStore((state: RegistrationStore) => state.setOtp);
 
   const getPasswordStrength = (pwd: string) => {
     let score = 0;
@@ -62,6 +80,191 @@ const RegisterScreen: React.FC = () => {
   const passwordsMatch =
     confirmPassword.length > 0 && password === confirmPassword;
 
+  const validateEmail = (value: string) => {
+    if (!value.trim()) return "Email is required.";
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(value) ? "" : "Please enter a valid email address.";
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) return "Password is required.";
+    if (value.length < 8) return "Password must be at least 8 characters.";
+    if (!/[A-Z]/.test(value))
+      return "Password must contain an uppercase letter.";
+    if (!/[a-z]/.test(value))
+      return "Password must contain a lowercase letter.";
+    if (!/[0-9]/.test(value)) return "Password must contain a number.";
+    if (!/[^a-zA-Z0-9]/.test(value))
+      return "Password must contain a special character.";
+    return "";
+  };
+
+  const [isSendingOtp, setIsSendingOtp] = useState(false);
+
+  const validateEmailField = (value: string): string => {
+    const error = validateEmail(value);
+    setEmailError(error);
+    return error;
+  };
+
+  const queryEmailAvailability = async (value: string) => {
+    if (!value.trim()) {
+      setEmailExists(false);
+      setEmailCheckedValue("");
+      return false;
+    }
+
+    const validation = validateEmail(value);
+    if (validation) {
+      setEmailExists(false);
+      setEmailCheckedValue("");
+      return false;
+    }
+
+    if (emailCheckPromiseRef.current && emailCheckedValue === value) {
+      return emailCheckPromiseRef.current;
+    }
+
+    const checkedValue = value;
+    setEmailCheckedValue(checkedValue);
+    setIsCheckingEmail(true);
+
+    const promise = (async () => {
+      const exists = await checkEmailAvailability(value);
+      if (checkedValue === email) {
+        setEmailExists(exists);
+        if (exists) {
+          setEmailError("Email already registered");
+        }
+      }
+      return exists;
+    })();
+
+    emailCheckPromiseRef.current = promise;
+
+    try {
+      return await promise;
+    } catch (_error: unknown) {
+      return false;
+    } finally {
+      if (emailCheckPromiseRef.current === promise) {
+        emailCheckPromiseRef.current = null;
+        setIsCheckingEmail(false);
+      }
+    }
+  };
+
+  const handleContinue = async () => {
+    if (isSendingOtp || isCheckingEmail || isContinuePressedRef.current) {
+      return;
+    }
+
+    if (emailCheckTimeout.current) {
+      clearTimeout(emailCheckTimeout.current);
+      emailCheckTimeout.current = null;
+    }
+
+    isContinuePressedRef.current = true;
+
+    const emailValidation = validateEmailField(email);
+    const passwordValidation = validatePassword(password);
+    const confirmValidation = confirmPassword
+      ? password === confirmPassword
+        ? ""
+        : "Passwords do not match."
+      : "Please confirm your password.";
+
+    setPasswordError(passwordValidation);
+    setConfirmPasswordError(confirmValidation);
+
+    if (emailValidation || passwordValidation || confirmValidation) {
+      isContinuePressedRef.current = false;
+      return;
+    }
+
+    if (emailExists) {
+      setEmailError("Email already registered");
+      isContinuePressedRef.current = false;
+      return;
+    }
+
+    if (emailCheckedValue !== email) {
+      const exists = await queryEmailAvailability(email);
+      if (exists) {
+        isContinuePressedRef.current = false;
+        return;
+      }
+    }
+
+    setIsSendingOtp(true);
+    try {
+      saveAccountCredentials(email, password);
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const createdAt = Date.now();
+      const expiresAt = createdAt + 5 * 60 * 1000;
+
+      // OTP generated and sent
+      await sendRegistrationOtpEmail(email, otp);
+      setOtp(otp, createdAt, expiresAt);
+
+      navigation.navigate("RegisterOtp");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to send verification code.";
+      setEmailError(message);
+    } finally {
+      isContinuePressedRef.current = false;
+      setIsSendingOtp(false);
+    }
+  };
+
+  const handleEmailChange = (value: string) => {
+    setEmail(value);
+    if (emailError) setEmailError("");
+    if (emailExists) setEmailExists(false);
+
+    if (emailCheckTimeout.current) {
+      clearTimeout(emailCheckTimeout.current);
+    }
+
+    emailCheckTimeout.current = setTimeout(() => {
+      queryEmailAvailability(value);
+    }, 500);
+  };
+
+  const handleEmailBlur = async () => {
+    if (emailCheckTimeout.current) {
+      clearTimeout(emailCheckTimeout.current);
+      emailCheckTimeout.current = null;
+    }
+    if (!isCheckingEmail && emailCheckedValue !== email) {
+      await queryEmailAvailability(email);
+    }
+  };
+
+  React.useEffect(() => {
+    // RegisterScreen mounted
+    return () => {
+      if (emailCheckTimeout.current) {
+        clearTimeout(emailCheckTimeout.current);
+      }
+      isContinuePressedRef.current = false;
+    };
+  }, []);
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(value);
+    if (passwordError) setPasswordError("");
+  };
+
+  const handleConfirmPasswordChange = (value: string) => {
+    setConfirmPassword(value);
+    if (confirmPasswordError) setConfirmPasswordError("");
+  };
+
   return (
     <ScreenContainer
       scrollable
@@ -97,21 +300,25 @@ const RegisterScreen: React.FC = () => {
 
         <AppInput
           label="Email Address"
+          required
           placeholder="resident@example.com"
           value={email}
-          onChangeText={setEmail}
+          onChangeText={handleEmailChange}
+          onBlur={handleEmailBlur}
           keyboardType="email-address"
           autoCapitalize="none"
           leftIcon={
             <Image source={require("../../../../../assets/icons/mail.png")} />
           }
+          error={emailError}
         />
 
         <AppInput
           label="Password"
+          required
           placeholder="••••••••"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={handlePasswordChange}
           isPassword
           leftIcon={
             <Image source={require("../../../../../assets/icons/lock.png")} />
@@ -128,6 +335,7 @@ const RegisterScreen: React.FC = () => {
               />
             ),
           }}
+          error={passwordError}
         />
 
         {password.length > 0 && (
@@ -187,9 +395,10 @@ const RegisterScreen: React.FC = () => {
 
         <AppInput
           label="Confirm Password"
+          required
           placeholder="••••••••"
           value={confirmPassword}
-          onChangeText={setConfirmPassword}
+          onChangeText={handleConfirmPasswordChange}
           isPassword
           leftIcon={
             <Image source={require("../../../../../assets/icons/lock.png")} />
@@ -206,6 +415,7 @@ const RegisterScreen: React.FC = () => {
               />
             ),
           }}
+          error={confirmPasswordError}
         />
 
         {(passwordsMatch || confirmPassword.length > 0) && (
@@ -220,11 +430,13 @@ const RegisterScreen: React.FC = () => {
         )}
 
         <AppButton
-          label="Continue"
-          onPress={() => navigation.navigate("RegisterOtp")}
+          label={isSendingOtp ? "Sending code..." : "Continue"}
+          onPress={handleContinue}
           variant="primary"
           fullWidth
           style={styles.continueButton}
+          disabled={isSendingOtp || isCheckingEmail || emailExists}
+          loading={isCheckingEmail || isSendingOtp}
         />
       </View>
 
