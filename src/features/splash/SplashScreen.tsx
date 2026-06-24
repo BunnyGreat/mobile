@@ -13,7 +13,6 @@ import type { RootStackNavigationProp } from "../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../theme";
 import { OnboardingStorage } from "../onboarding/onboardingStorage";
 
-const { width } = Dimensions.get("window");
 const SPLASH_DURATION = 2000; // Match this with animation duration
 
 const SplashScreen: React.FC = () => {

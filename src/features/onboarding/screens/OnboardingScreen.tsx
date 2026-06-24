@@ -6,25 +6,18 @@ import {
   Image,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackNavigationProp } from "../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import { ONBOARDING_SLIDES } from "../onboardingData";
 import { OnboardingStorage } from "../onboardingStorage";
 
-const { width } = Dimensions.get("window");
-
 const OnboardingScreen: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation<RootStackNavigationProp>();
-  const insets = useSafeAreaInsets();
 
   const currentSlide = ONBOARDING_SLIDES[currentIndex];
   const isLastSlide = currentIndex === ONBOARDING_SLIDES.length - 1;
@@ -145,8 +138,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xxxl,
   },
   title: {
-    fontSize: FONT_SIZE.h28,
-    fontFamily: FONT_FAMILY.bold,
+    fontSize: FONT_SIZE.h24,
+    fontFamily: FONT_FAMILY.semibold,
     color: COLORS.heading,
     textAlign: "center",
     marginBottom: SPACING.md,
