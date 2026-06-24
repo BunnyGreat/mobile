@@ -9,6 +9,10 @@ export type RootStackParamList = {
   ResetPassword: undefined;
   Register: undefined;
   RegisterOtp: undefined;
+  PersonalInformation: undefined;
+  ResidenceInformation: undefined;
+  UploadIdentification: undefined;
+  RegistrationSuccess: undefined;
 };
 
 export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;

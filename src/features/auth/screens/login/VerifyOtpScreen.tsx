@@ -4,7 +4,7 @@
  * UI only - no backend logic.
  */
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -21,8 +21,26 @@ import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
 
 const VerifyOtpScreen: React.FC = () => {
   const [otp, setOtp] = useState("");
+  const [countdown, setCountdown] = useState(180);
+  const [email, setEmail] = useState("user@example.com");
   const navigation = useNavigation<RootStackNavigationProp>();
   const otpInputsRef = React.useRef<Array<TextInput | null>>([]);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((current) => Math.max(0, current - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatCountdown = () => {
+    const minutes = Math.floor(countdown / 60);
+    const seconds = countdown % 60;
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  };
 
   const handleOtpChange = (index: number, value: string) => {
     const digits = value.replace(/[^0-9]/g, "");
@@ -95,9 +113,8 @@ const VerifyOtpScreen: React.FC = () => {
 
         <Text style={styles.title}>Verify OTP</Text>
         <Text style={styles.subtitle}>
-          We've sent an email to{" "}
-          <Text style={styles.emailText}>email@gmail.com</Text> containing a
-          6-digit code.
+          We've sent an email to <Text style={styles.emailText}>{email}</Text>{" "}
+          containing a 6-digit code.
         </Text>
 
         {/* OTP Input Boxes */}
@@ -122,7 +139,9 @@ const VerifyOtpScreen: React.FC = () => {
 
         {/* Timer Display */}
         <View style={styles.timerContainer}>
-          <Text style={styles.timerText}>⏱ Code expires in 04:59</Text>
+          <Text style={styles.timerText}>
+            ⏱ Code expires in {formatCountdown()}
+          </Text>
         </View>
 
         {/* Resend Code Link */}

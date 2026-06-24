@@ -8,6 +8,10 @@ import VerifyOtpScreen from "../features/auth/screens/login/VerifyOtpScreen";
 import ResetPasswordScreen from "../features/auth/screens/login/ResetPasswordScreen";
 import RegisterScreen from "../features/auth/screens/register/RegisterScreen";
 import RegisterOtpScreen from "../features/auth/screens/register/RegisterOtpScreen";
+import PersonalInformationScreen from "../features/auth/screens/register/PersonalInformationScreen";
+import ResidenceInformationScreen from "../features/auth/screens/register/ResidenceInformationScreen";
+import UploadIdentificationScreen from "../features/auth/screens/register/UploadIdentificationScreen";
+import RegistrationSuccessScreen from "../features/auth/screens/register/RegistrationSuccessScreen";
 import { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -28,6 +32,22 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="RegisterOtp" component={RegisterOtpScreen} />
+      <Stack.Screen
+        name="PersonalInformation"
+        component={PersonalInformationScreen}
+      />
+      <Stack.Screen
+        name="ResidenceInformation"
+        component={ResidenceInformationScreen}
+      />
+      <Stack.Screen
+        name="UploadIdentification"
+        component={UploadIdentificationScreen}
+      />
+      <Stack.Screen
+        name="RegistrationSuccess"
+        component={RegistrationSuccessScreen}
+      />
     </Stack.Navigator>
   );
 };
