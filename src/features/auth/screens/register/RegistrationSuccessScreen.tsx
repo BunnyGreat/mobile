@@ -31,7 +31,7 @@ const RegistrationSuccessScreen: React.FC = () => {
     >
       <View style={styles.container}>
         <Image
-          source={require("../../../../assets/images/success.png")}
+          source={require("../../../../../assets/images/success.png")}
           style={styles.image}
           resizeMode="contain"
         />
@@ -52,11 +52,10 @@ const RegistrationSuccessScreen: React.FC = () => {
 
         <View style={styles.contentBlock}>
           <View style={styles.statusBadge}>
-            <Image
-              source={require("../../../../assets/icons/time.svg")}
-              style={[styles.statusIcon, { tintColor: COLORS.primary }]}
-              resizeMode="contain"
-            />
+              <Image
+                source={require("../../../../../assets/icons/time.svg")}
+                resizeMode="contain"
+              />
             <Text style={styles.statusText}>Status:</Text>
             <Text style={styles.pendingText}>Pending Verification</Text>
           </View>
