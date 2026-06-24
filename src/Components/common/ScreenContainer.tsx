@@ -26,23 +26,39 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   const containerStyle: StyleProp<ViewStyle> = [
     {
       flex: 1,
-      padding: SPACING[padding],
       backgroundColor: "transparent",
     },
     style,
   ];
 
+  const scrollContentStyle: StyleProp<ViewStyle> = {
+    paddingHorizontal: SPACING[padding],
+    paddingTop: SPACING[padding],
+    paddingBottom: SPACING[padding],
+  };
+
   return (
     <SafeAreaView style={containerStyle}>
       {scrollable ? (
         <ScrollView
-          contentContainerStyle={contentContainerStyle}
+          contentContainerStyle={[scrollContentStyle, contentContainerStyle]}
           showsVerticalScrollIndicator={false}
         >
           {children}
         </ScrollView>
       ) : (
-        <View style={contentContainerStyle}>{children}</View>
+        <View
+          style={[
+            {
+              paddingHorizontal: SPACING[padding],
+              paddingTop: SPACING[padding],
+              paddingBottom: SPACING[padding],
+            },
+            contentContainerStyle,
+          ]}
+        >
+          {children}
+        </View>
       )}
     </SafeAreaView>
   );

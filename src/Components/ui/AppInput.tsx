@@ -78,10 +78,10 @@ export const AppInput: React.FC<AppInputProps> = ({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor,
+    borderColor: COLORS.inputBorder,
     borderRadius: SPACING.sm,
     paddingHorizontal: SPACING.md,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.inputBackground,
     height: inputHeight,
   };
 
@@ -128,7 +128,7 @@ export const AppInput: React.FC<AppInputProps> = ({
         <TextInput
           {...textInputProps}
           placeholder={placeholder}
-          placeholderTextColor={COLORS.border}
+          placeholderTextColor={COLORS.placeholder}
           value={value}
           onChangeText={onChangeText}
           secureTextEntry={isPassword ? !showPassword : secureTextEntry}

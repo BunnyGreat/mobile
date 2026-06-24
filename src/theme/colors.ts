@@ -6,6 +6,12 @@ export const COLORS = {
 
   paragraph: "#414753",
 
+  placeholder: "#6B7280",
+
+  inputBackground: "#F8F9FA",
+
+  inputBorder: "#C1C6D5",
+
   white: "#FFFFFF",
 
   background: "#FFFFFF",
