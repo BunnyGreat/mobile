@@ -9,12 +9,16 @@ type Props = {
 };
 
 const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
-  const [idUri, setIdUri] = useState<string | null>(null);
+  const [frontUri, setFrontUri] = useState<string | null>(null);
+  const [backUri, setBackUri] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
 
-  const handleUploadId = () => {
-    // Placeholder for camera/gallery action
-    console.log("Upload ID");
+  const handleUploadFront = () => {
+    console.log("Upload front ID");
+  };
+
+  const handleUploadBack = () => {
+    console.log("Upload back ID");
   };
 
   const handleSubmit = () => {
@@ -23,53 +27,131 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
 
   return (
     <View style={styles.container}>
-      {/* Upload Document Label */}
-      <View style={styles.uploadSectionLabel}>
-        <Text style={styles.sectionTitle}>UPLOAD DOCUMENT</Text>
+      {/* Progress Section */}
+      <View style={styles.progressSection}>
+        <View style={styles.progressHeader}>
+          <Text style={styles.stepText}>STEP 4 OF 4</Text>
+          <Text style={styles.progressText}>100% Complete</Text>
+        </View>
+        <View style={styles.progressBarRow}>
+          <View
+            style={[styles.progressSegment, styles.progressSegmentActive]}
+          />
+          <View
+            style={[styles.progressSegment, styles.progressSegmentActive]}
+          />
+          <View
+            style={[styles.progressSegment, styles.progressSegmentActive]}
+          />
+          <View
+            style={[styles.progressSegment, styles.progressSegmentActive]}
+          />
+        </View>
       </View>
 
-      {/* ID Upload Card */}
-      <TouchableOpacity
-        style={[styles.uploadCard, idUri && styles.uploadCardWithImage]}
-        activeOpacity={0.8}
-        onPress={handleUploadId}
-      >
-        {idUri ? (
-          <Image
-            source={{ uri: idUri }}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.uploadCardContent}>
-            <View style={styles.uploadIconContainer}>
-              <Image
-                source={require("../../../../../../assets/icons/upload.png")}
-                style={styles.uploadIcon}
-                resizeMode="contain"
-              />
-            </View>
-            <Text style={styles.uploadPrompt}>Click to upload</Text>
-            <Text style={styles.uploadSubtext}>
-              or drag and drop your scanned ID{"\n"}(JPG, PNG, PDF)
-            </Text>
-          </View>
-        )}
-      </TouchableOpacity>
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <Text style={styles.headerTitle}>Upload Identification</Text>
+        <Text style={styles.headerSubtitle}>
+          Please upload a valid government-issued ID for identity verification.
+        </Text>
+      </View>
 
-      {/* Verification Notice */}
-      <View style={styles.verificationCard}>
-        <View style={styles.verificationCardHeader}>
+      {/* Illustration */}
+      <View style={styles.illustrationBox}>
+        <Image
+          source={require("../../../../../../assets/images/ScanId.png")}
+          style={styles.illustration}
+          resizeMode="contain"
+        />
+      </View>
+
+      {/* Scan Title + Subtitle (centered below illustration) */}
+      <View style={styles.scanSection}>
+        <Text style={styles.scanTitle}>Scan Your ID</Text>
+        <Text style={styles.scanSubtitle}>
+          Ensure your National ID or Voter's ID is{"\n"}clearly visible and
+          within the frame.
+        </Text>
+      </View>
+
+      {/* Front Side of ID */}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Front Side of ID</Text>
+        <TouchableOpacity
+          style={[styles.uploadField, frontUri && styles.uploadFieldActive]}
+          activeOpacity={0.8}
+          onPress={handleUploadFront}
+        >
+          {frontUri ? (
+            <Image
+              source={{ uri: frontUri }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={styles.uploadFieldContent}>
+              <View style={styles.uploadIconWrapper}>
+                <Image
+                  source={require("../../../../../../assets/icons/upload.png")}
+                  style={styles.uploadIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.uploadTitle}>Tap to Upload</Text>
+              <Text style={styles.uploadHint}>
+                Upload a clear photo of your ID
+              </Text>
+              <Text style={styles.uploadHelper}>JPG or PNG</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Back Side of ID */}
+      <View style={styles.fieldContainer}>
+        <Text style={styles.fieldLabel}>Back Side of ID</Text>
+        <TouchableOpacity
+          style={[styles.uploadField, backUri && styles.uploadFieldActive]}
+          activeOpacity={0.8}
+          onPress={handleUploadBack}
+        >
+          {backUri ? (
+            <Image
+              source={{ uri: backUri }}
+              style={styles.previewImage}
+              resizeMode="contain"
+            />
+          ) : (
+            <View style={styles.uploadFieldContent}>
+              <View style={styles.uploadIconWrapper}>
+                <Image
+                  source={require("../../../../../../assets/icons/upload.png")}
+                  style={styles.uploadIcon}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.uploadTitle}>Tap to Upload</Text>
+              <Text style={styles.uploadHint}>
+                Upload a clear photo of your ID
+              </Text>
+              <Text style={styles.uploadHelper}>JPG or PNG</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Accepted IDs Card */}
+      <View style={styles.noticeCard}>
+        <View style={styles.noticeIconWrapper}>
           <Image
-            source={require("../../../../../../assets/icons/shield-check.png")}
-            style={styles.verificationIcon}
+            source={require("../../../../../../assets/icons/notice.png")}
+            style={styles.noticeIcon}
             resizeMode="contain"
           />
-          <Text style={styles.verificationTitle}>Important</Text>
         </View>
-        <Text style={styles.verificationText}>
-          Ensure that all text and information on your ID are clearly visible
-          before submission.
+        <Text style={styles.noticeText}>
+          Accepted IDs: National ID, Passport, Driver's License, or Barangay ID.
         </Text>
       </View>
 
@@ -91,24 +173,34 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Action Buttons */}
+      {/* Bottom Actions */}
       <View style={styles.actionsRow}>
         <AppButton
           label="Create Account"
           onPress={handleSubmit}
           variant="primary"
           fullWidth
-          disabled={!checked || !idUri}
+          disabled={!checked || !frontUri || !backUri}
+          style={styles.nextButton}
         />
       </View>
 
-      <TouchableOpacity
-        style={styles.backButtonContainer}
-        activeOpacity={0.8}
-        onPress={onBack}
-      >
+      <TouchableOpacity onPress={onBack} style={styles.backButtonTouch}>
         <Text style={styles.backText}>← Back to Previous Step</Text>
       </TouchableOpacity>
+
+      <View style={styles.securityFooter}>
+        <Image
+          source={require("../../../../../../assets/icons/shield-check.png")}
+          style={styles.securityIcon}
+          resizeMode="contain"
+        />
+        <Text style={styles.securityText}>256-bit Encrypted Connection</Text>
+      </View>
+
+      <Text style={styles.copyText}>
+        © 2026 Barangay San Isidro. All rights reserved.
+      </Text>
     </View>
   );
 };
@@ -125,83 +217,198 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.semibold,
     color: COLORS.heading,
   },
-  uploadCard: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    borderStyle: "dashed",
-    borderRadius: SPACING.lg,
-    padding: SPACING.lg,
-    minHeight: 200,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(59, 130, 246, 0.05)",
+  fieldContainer: {
     marginBottom: SPACING.lg,
   },
-  uploadCardWithImage: {
-    borderStyle: "solid",
+  headerSection: {
+    marginBottom: SPACING.lg,
   },
-  uploadCardContent: {
+  headerTitle: {
+    fontSize: FONT_SIZE.h28 || 24,
+    fontFamily: FONT_FAMILY.semibold,
+    color: COLORS.heading,
+    marginBottom: SPACING.sm,
+  },
+  headerSubtitle: {
+    fontSize: FONT_SIZE.body16,
+    fontFamily: FONT_FAMILY.regular,
+    color: COLORS.paragraph,
+    lineHeight: FONT_SIZE.body16 * 1.5,
+  },
+  fieldLabel: {
+    fontSize: FONT_SIZE.body12,
+    fontFamily: FONT_FAMILY.semibold,
+    color: COLORS.heading,
+    marginBottom: SPACING.xs,
+  },
+  uploadField: {
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    minHeight: 170,
+    padding: SPACING.lg,
     alignItems: "center",
     justifyContent: "center",
   },
-  uploadIconContainer: {
+  uploadFieldActive: {
+    borderColor: COLORS.primary,
+  },
+  uploadFieldContent: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadIconWrapper: {
     width: 56,
     height: 56,
     borderRadius: 12,
-    backgroundColor: "rgba(59, 130, 246, 0.15)",
+    backgroundColor: "rgba(59, 130, 246, 0.12)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
   },
   uploadIcon: {
     width: 24,
     height: 24,
   },
-  uploadPrompt: {
-    fontSize: FONT_SIZE.h20,
+  uploadTitle: {
+    fontSize: FONT_SIZE.body14,
     fontFamily: FONT_FAMILY.semibold,
     color: COLORS.heading,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
-  uploadSubtext: {
+  uploadHint: {
+    fontSize: FONT_SIZE.body12,
+    fontFamily: FONT_FAMILY.regular,
+    color: COLORS.paragraph,
+    marginBottom: SPACING.xs,
+    textAlign: "center",
+  },
+  uploadHelper: {
     fontSize: FONT_SIZE.body12,
     fontFamily: FONT_FAMILY.regular,
     color: COLORS.paragraph,
     textAlign: "center",
-    lineHeight: FONT_SIZE.body12 * 1.5,
+  },
+  progressSection: {
+    marginBottom: SPACING.lg,
+  },
+  progressHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.sm,
+  },
+  stepText: {
+    color: COLORS.primary,
+    fontSize: FONT_SIZE.body12,
+    fontFamily: FONT_FAMILY.semibold,
+  },
+  progressText: {
+    color: COLORS.paragraph,
+    fontSize: FONT_SIZE.body12,
+    fontFamily: FONT_FAMILY.regular,
+  },
+  progressBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: SPACING.sm,
+  },
+  progressSegment: {
+    flex: 1,
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: COLORS.border,
+  },
+  progressSegmentActive: {
+    backgroundColor: COLORS.primary,
   },
   previewImage: {
     width: "100%",
     height: 140,
   },
-  verificationCard: {
-    backgroundColor: "rgba(59, 130, 246, 0.08)",
+  illustrationBox: {
+    width: "100%",
+    aspectRatio: 1,
     borderWidth: 1,
-    borderColor: "rgba(59, 130, 246, 0.2)",
-    borderRadius: SPACING.lg,
-    padding: SPACING.lg,
+    borderColor: COLORS.border,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: SPACING.lg,
   },
-  verificationCardHeader: {
-    flexDirection: "row",
+  illustration: {
+    width: "70%",
+    height: "70%",
+  },
+  scanSection: {
     alignItems: "center",
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.lg,
   },
-  verificationIcon: {
-    width: 20,
-    height: 20,
-  },
-  verificationTitle: {
-    fontSize: FONT_SIZE.body12,
-    fontFamily: FONT_FAMILY.semibold,
+  scanTitle: {
+    fontSize: FONT_SIZE.h24,
+    fontFamily: FONT_FAMILY.bold,
     color: COLORS.heading,
+    marginBottom: SPACING.xs,
   },
-  verificationText: {
-    fontSize: FONT_SIZE.body12,
+  scanSubtitle: {
+    fontSize: FONT_SIZE.body16,
     fontFamily: FONT_FAMILY.regular,
     color: COLORS.paragraph,
-    lineHeight: FONT_SIZE.body12 * 1.5,
+    lineHeight: FONT_SIZE.body14 * 1.6,
+    textAlign: "center",
+  },
+  securityFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: SPACING.sm,
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.lg,
+  },
+  securityIcon: {
+    width: 18,
+    height: 18,
+    tintColor: COLORS.success,
+  },
+  securityText: {
+    fontSize: FONT_SIZE.h16,
+    fontFamily: FONT_FAMILY.bold,
+    color: COLORS.heading,
+  },
+  noticeCard: {
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.md,
+    padding: SPACING.lg,
+    borderRadius: 16,
+    backgroundColor: "rgba(225, 227, 228, 1)",
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  noticeIconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: SPACING.md,
+  },
+  noticeIcon: {
+    width: 18,
+    height: 18,
+    resizeMode: "contain",
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: FONT_SIZE.body14,
+    fontFamily: FONT_FAMILY.regular,
+    color: COLORS.paragraph,
+    lineHeight: FONT_SIZE.body14 * 1.6,
+    flexShrink: 1,
   },
   checkboxSection: {
     marginBottom: SPACING.lg,
@@ -233,22 +440,34 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     flex: 1,
-    fontSize: FONT_SIZE.body12,
+    fontSize: FONT_SIZE.body14,
     fontFamily: FONT_FAMILY.regular,
     color: COLORS.paragraph,
-    lineHeight: FONT_SIZE.body12 * 1.6,
+    lineHeight: FONT_SIZE.body14 * 1.6,
   },
   actionsRow: {
+    marginTop: SPACING.lg,
     marginBottom: SPACING.md,
   },
-  backButtonContainer: {
-    alignItems: "center",
-    paddingVertical: SPACING.md,
+  nextButton: {
+    borderRadius: 16,
+  },
+  backButtonTouch: {
+    marginBottom: SPACING.lg,
+    alignSelf: "center",
   },
   backText: {
     color: COLORS.primary,
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body14,
+  },
+  copyText: {
+    textAlign: "center",
+    fontSize: FONT_SIZE.body16,
+    fontFamily: FONT_FAMILY.regular,
+    color: COLORS.paragraph,
+    marginTop: SPACING.sm,
+    marginBottom: SPACING.lg,
   },
 });
 

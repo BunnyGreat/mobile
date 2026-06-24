@@ -63,7 +63,7 @@ const ResidenceInfoForm: React.FC<Props> = ({ onNext, onBack }) => {
       <View style={styles.headerSection}>
         <View style={styles.iconContainer}>
           <Image
-            source={require("../../../../../assets/icons/location.png")}
+            source={require("../../../../../../assets/icons/location.png")}
             resizeMode="contain"
             style={styles.iconImage}
           />
@@ -156,7 +156,7 @@ const ResidenceInfoForm: React.FC<Props> = ({ onNext, onBack }) => {
       <View style={styles.noticeCard}>
         <View style={styles.noticeIcon}>
           <Image
-            source={require("../../../../../assets/icons/shield-check.png")}
+            source={require("../../../../../../assets/icons/shield-check.png")}
             resizeMode="contain"
             style={styles.noticeIconImage}
           />
@@ -316,7 +316,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
-    backgroundColor: "rgba(59, 130, 246, 0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
