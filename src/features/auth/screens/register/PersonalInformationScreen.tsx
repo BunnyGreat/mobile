@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
-import PersonalInfoForm from "./components/PersonalInfoForm";
+import PersonalInformationForm from "../../../register/components/PersonalInformationForm";
 import { useNavigation } from "@react-navigation/native";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
 
@@ -54,40 +54,8 @@ const PersonalInformationScreen: React.FC = () => {
           </Text>
         </View>
 
-        <View style={styles.photoSection}>
-          <View style={styles.photoPlaceholder}>
-            <Text style={{ fontSize: 32, color: COLORS.border }}>👤</Text>
-          </View>
-          <Text style={styles.photoLabel}>No Photo Selected</Text>
-
-          <TouchableOpacity
-            style={styles.cameraButton}
-            activeOpacity={0.8}
-            onPress={() => {}}
-          >
-            <Text style={{ color: COLORS.white, fontSize: 16 }}>📷</Text>
-          </TouchableOpacity>
-
-          <View style={styles.photoActionsRow}>
-            <TouchableOpacity
-              style={[styles.photoActionButton, styles.photoActionPrimary]}
-              activeOpacity={0.8}
-              onPress={() => {}}
-            >
-              <Text style={styles.photoActionPrimaryText}>Upload Photo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.photoActionButton, styles.photoActionSecondary]}
-              activeOpacity={0.8}
-              onPress={() => {}}
-            >
-              <Text style={styles.photoActionSecondaryText}>Take Photo</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
         <View style={styles.formWrapper}>
-          <PersonalInfoForm
+          <PersonalInformationForm
             onSubmit={handleSubmit}
             onBack={() => navigation.goBack()}
           />
