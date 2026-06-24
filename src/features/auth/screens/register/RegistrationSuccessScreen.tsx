@@ -11,7 +11,7 @@ const RegistrationSuccessScreen: React.FC = () => {
   const handleReturnToLogin = () => {
     // Call clearRegistration if the app exposes it on global scope
     try {
-      (global as any).clearRegistration?.();
+      (globalThis as any).clearRegistration?.();
     } catch (e) {
       // ignore
     }
@@ -52,10 +52,10 @@ const RegistrationSuccessScreen: React.FC = () => {
 
         <View style={styles.contentBlock}>
           <View style={styles.statusBadge}>
-              <Image
-                source={require("../../../../../assets/icons/time.svg")}
-                resizeMode="contain"
-              />
+            <Image
+              source={require("../../../../../assets/icons/calendar-pending.png")}
+              resizeMode="contain"
+            />
             <Text style={styles.statusText}>Status:</Text>
             <Text style={styles.pendingText}>Pending Verification</Text>
           </View>
