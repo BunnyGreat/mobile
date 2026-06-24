@@ -7,6 +7,7 @@ import ForgotPasswordScreen from "../features/auth/screens/login/ForgotPasswordS
 import VerifyOtpScreen from "../features/auth/screens/login/VerifyOtpScreen";
 import ResetPasswordScreen from "../features/auth/screens/login/ResetPasswordScreen";
 import RegisterScreen from "../features/auth/screens/register/RegisterScreen";
+import RegisterOtpScreen from "../features/auth/screens/register/RegisterOtpScreen";
 import { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -26,6 +27,7 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="RegisterOtp" component={RegisterOtpScreen} />
     </Stack.Navigator>
   );
 };

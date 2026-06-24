@@ -1,64 +1,53 @@
-import React from "react";
-import {
-  SafeAreaView,
-  ScrollView,
-  StyleProp,
-  View,
-  ViewStyle,
-} from "react-native";
-import { SPACING } from "../../theme";
+import React, { ReactNode } from "react";
+import { ScrollView, View, ViewStyle, ScrollViewProps } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { COLORS, SPACING } from "../../theme";
 
-export interface ScreenContainerProps {
-  children: React.ReactNode;
+interface ScreenContainerProps extends Omit<ScrollViewProps, "children"> {
+  children: ReactNode;
   scrollable?: boolean;
-  padding?: keyof typeof SPACING;
-  style?: StyleProp<ViewStyle>;
-  contentContainerStyle?: StyleProp<ViewStyle>;
+  backgroundColor?: string;
+  padding?: number | keyof typeof SPACING;
+  containerStyle?: ViewStyle;
+  flex?: boolean;
 }
 
 export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   children,
   scrollable = false,
+  backgroundColor = COLORS.background,
   padding = "lg",
-  style,
-  contentContainerStyle,
+  containerStyle,
+  flex = true,
+  ...scrollViewProps
 }) => {
-  const containerStyle: StyleProp<ViewStyle> = [
-    {
-      flex: 1,
-      backgroundColor: "transparent",
-    },
-    style,
-  ];
-
-  const scrollContentStyle: StyleProp<ViewStyle> = {
-    paddingHorizontal: SPACING[padding],
-    paddingTop: SPACING[padding],
-    paddingBottom: SPACING[padding],
+  const contentStyle: ViewStyle = {
+    flex: flex ? 1 : undefined,
+    backgroundColor,
+    padding: typeof padding === "string" ? SPACING[padding] : padding,
+    ...containerStyle,
   };
 
+  const content = <View style={contentStyle}>{children}</View>;
+
   return (
-    <SafeAreaView style={containerStyle}>
+    <SafeAreaView
+      style={{
+        flex: flex ? 1 : undefined,
+        backgroundColor,
+      }}
+    >
       {scrollable ? (
         <ScrollView
-          contentContainerStyle={[scrollContentStyle, contentContainerStyle]}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
+          {...scrollViewProps}
         >
-          {children}
+          {content}
         </ScrollView>
       ) : (
-        <View
-          style={[
-            {
-              paddingHorizontal: SPACING[padding],
-              paddingTop: SPACING[padding],
-              paddingBottom: SPACING[padding],
-            },
-            contentContainerStyle,
-          ]}
-        >
-          {children}
-        </View>
+        content
       )}
     </SafeAreaView>
   );

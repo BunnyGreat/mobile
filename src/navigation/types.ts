@@ -8,6 +8,7 @@ export type RootStackParamList = {
   VerifyOtp: undefined;
   ResetPassword: undefined;
   Register: undefined;
+  RegisterOtp: undefined;
 };
 
 export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;

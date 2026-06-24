@@ -238,6 +238,9 @@ const styles = StyleSheet.create({
   topContent: {
     alignItems: "center",
     width: "100%",
+    flex: 1,
+    justifyContent: "center",
+    paddingVertical: SPACING.lg,
   },
 
   title: {
@@ -350,7 +353,7 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   bottomNote: {
-    marginTop: SPACING.xl,
+    marginTop: SPACING.lg,
     fontSize: FONT_SIZE.body14,
     fontFamily: FONT_FAMILY.regular,
     color: COLORS.paragraph,
