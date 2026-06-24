@@ -34,7 +34,7 @@ export const FormImagePicker: React.FC<FormImagePickerProps> = ({
     if (!permission.granted) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       quality: 0.7,
     });

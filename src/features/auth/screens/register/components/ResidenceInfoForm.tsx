@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import AppInput from "../../../../../components/ui/AppInput";
 import AppButton from "../../../../../components/ui/AppButton";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../../theme";
+import type { RegistrationResidenceInformation } from "../types/register.types";
 
 type ResidenceInfoFormState = {
   blockNumber: string;
@@ -12,7 +13,7 @@ type ResidenceInfoFormState = {
 };
 
 type Props = {
-  onNext?: () => void;
+  onNext?: (data: RegistrationResidenceInformation) => void;
   onBack?: () => void;
 };
 
@@ -26,13 +27,40 @@ const ResidenceInfoForm: React.FC<Props> = ({ onNext, onBack }) => {
     barangay: "San Isidro",
   });
   const [barangayOpen, setBarangayOpen] = useState(false);
+  const [blockNumberError, setBlockNumberError] = useState("");
+  const [lotNumberError, setLotNumberError] = useState("");
+  const [subdivisionError, setSubdivisionError] = useState("");
 
   const handleChange = (key: keyof ResidenceInfoFormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleNext = () => {
-    if (onNext) onNext();
+    const blockValidation = form.blockNumber.trim()
+      ? ""
+      : "Block number is required.";
+    const lotValidation = form.lotNumber.trim()
+      ? ""
+      : "Lot number is required.";
+    const subdivisionValidation = form.subdivision.trim()
+      ? ""
+      : "Phase / Subdivision is required.";
+
+    setBlockNumberError(blockValidation);
+    setLotNumberError(lotValidation);
+    setSubdivisionError(subdivisionValidation);
+
+    if (!blockValidation && !lotValidation && !subdivisionValidation) {
+      if (onNext)
+        onNext({
+          houseNumber: form.blockNumber.trim(),
+          street: form.lotNumber.trim(),
+          purok: form.subdivision.trim(),
+          barangay: form.barangay,
+          municipality: "Rodriguez (Montalban)",
+          province: "Rizal",
+        });
+    }
   };
 
   const handleBack = () => {
@@ -78,25 +106,43 @@ const ResidenceInfoForm: React.FC<Props> = ({ onNext, onBack }) => {
 
       <AppInput
         label="Block Number"
+        required
         placeholder="e.g. Blk 24"
         value={form.blockNumber}
-        onChangeText={(value) => handleChange("blockNumber", value)}
+        onChangeText={(value) => {
+          handleChange("blockNumber", value);
+          if (blockNumberError) setBlockNumberError("");
+        }}
+        error={blockNumberError}
       />
       <AppInput
         label="Lot Number"
+        required
         placeholder="e.g. Lot 12"
         value={form.lotNumber}
-        onChangeText={(value) => handleChange("lotNumber", value)}
+        onChangeText={(value) => {
+          handleChange("lotNumber", value);
+          if (lotNumberError) setLotNumberError("");
+        }}
+        error={lotNumberError}
       />
       <AppInput
         label="Phase / Subdivision"
+        required
         placeholder="e.g. Phase 3A / Eastwood Greenview"
         value={form.subdivision}
-        onChangeText={(value) => handleChange("subdivision", value)}
+        onChangeText={(value) => {
+          handleChange("subdivision", value);
+          if (subdivisionError) setSubdivisionError("");
+        }}
+        error={subdivisionError}
       />
 
       <View style={styles.dropdownWrapper}>
-        <Text style={styles.fieldLabel}>Barangay</Text>
+        <Text style={styles.fieldLabel}>
+          Barangay
+          <Text style={styles.required}>*</Text>
+        </Text>
         <TouchableOpacity
           style={styles.dropdownButton}
           activeOpacity={0.8}
@@ -329,6 +375,9 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.regular,
     color: COLORS.paragraph,
     lineHeight: FONT_SIZE.body14 * 1.6,
+  },
+  required: {
+    color: COLORS.danger,
   },
 });
 

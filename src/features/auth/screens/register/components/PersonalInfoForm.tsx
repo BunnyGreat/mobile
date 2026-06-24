@@ -8,15 +8,20 @@ import {
   Image,
   Modal,
   FlatList,
+  Alert,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
 import { Calendar } from "react-native-calendars";
 import { format } from "date-fns";
 import AppInput from "../../../../../components/ui/AppInput";
 import AppButton from "../../../../../components/ui/AppButton";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../../theme";
 
+import type { RegistrationPersonalInformation } from "../types/register.types";
+
 type Props = {
-  onNext?: () => void;
+  onNext?: (data: RegistrationPersonalInformation) => void;
   onBack?: () => void;
 };
 
@@ -30,6 +35,8 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
   const [gender, setGender] = useState<string>("male");
   const [civilStatus, setCivilStatus] = useState<string>("single");
   const [statusOpen, setStatusOpen] = useState(false);
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoError, setPhotoError] = useState("");
 
   // Format contact number
   const formatContactNumber = (digits: string) => {
@@ -61,8 +68,170 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
     [dateOfBirth],
   );
 
+  const [firstNameError, setFirstNameError] = useState("");
+  const [middleNameError, setMiddleNameError] = useState("");
+  const [lastNameError, setLastNameError] = useState("");
+  const [contactNumberError, setContactNumberError] = useState("");
+  const [dateOfBirthError, setDateOfBirthError] = useState("");
+  const [genderError, setGenderError] = useState("");
+  const [civilStatusError, setCivilStatusError] = useState("");
+
+  const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+  const handleContactNumberChange = (value: string) => {
+    const digits = value.replace(/\D/g, "");
+    if (!digits) {
+      setContactNumber("");
+      setContactNumberError("");
+      return;
+    }
+
+    if (digits[0] !== "9") {
+      setContactNumberError("Contact number must start with 9.");
+      return;
+    }
+
+    const limited = digits.slice(0, 10);
+    setContactNumber(limited);
+    if (contactNumberError) setContactNumberError("");
+  };
+
+  const requestPhotoPermission = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Permission required",
+        "Media library access is required to upload a profile photo.",
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const compressPhoto = async (uri: string) => {
+    const result = await ImageManipulator.manipulateAsync(
+      uri,
+      [{ resize: { width: 1200, height: 1200 } }],
+      {
+        compress: 0.7,
+        format: ImageManipulator.SaveFormat.JPEG,
+      },
+    );
+
+    if (!result.uri) {
+      throw new Error("Image compression failed.");
+    }
+
+    const response = await fetch(result.uri);
+    const blob = await response.blob();
+    if (blob.size > MAX_IMAGE_SIZE) {
+      throw new Error("Image must be 5MB or less.");
+    }
+
+    return result.uri;
+  };
+
+  const handleUploadPhoto = async () => {
+    const hasPermission = await requestPhotoPermission();
+    if (!hasPermission) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: false,
+      quality: 1,
+    });
+
+    if (result.canceled) return;
+
+    const asset = result.assets?.[0];
+    if (!asset?.uri) return;
+
+    const extension = asset.uri.split(".").pop()?.toLowerCase();
+    if (!extension || !["jpg", "jpeg", "png"].includes(extension)) {
+      const message = "Profile photo must be a JPG or PNG image.";
+      setPhotoError(message);
+      Alert.alert(message);
+      return;
+    }
+
+    try {
+      const compressedUri = await compressPhoto(asset.uri);
+      setPhotoUri(compressedUri);
+      setPhotoError("");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to process photo.";
+      setPhotoError(message);
+      Alert.alert(message);
+    }
+  };
+
   const handleNext = () => {
-    if (onNext) onNext();
+    const firstNameValidation = !firstName.trim()
+      ? "First name is required."
+      : firstName.trim().length < 2
+        ? "First name must be at least 2 characters."
+        : "";
+    const middleNameValidation = !middleName.trim()
+      ? "Middle name is required."
+      : "";
+    const lastNameValidation = !lastName.trim()
+      ? "Last name is required."
+      : lastName.trim().length < 2
+        ? "Last name must be at least 2 characters."
+        : "";
+    const contactDigits = contactNumber.replace(/\D/g, "");
+    const contactValidation = !contactDigits
+      ? "Contact number is required."
+      : contactDigits.length !== 10
+        ? "Contact number must be 10 digits."
+        : contactDigits[0] !== "9"
+          ? "Contact number must start with 9."
+          : "";
+    const dobValidation = dateOfBirth ? "" : "Date of birth is required.";
+    const genderValidation = gender ? "" : "Gender is required.";
+    const civilStatusValidation = civilStatus
+      ? ""
+      : "Civil status is required.";
+    const photoValidation = photoUri ? "" : "Profile photo is required.";
+
+    setFirstNameError(firstNameValidation);
+    setMiddleNameError(middleNameValidation);
+    setLastNameError(lastNameValidation);
+    setContactNumberError(contactValidation);
+    setDateOfBirthError(dobValidation);
+    setGenderError(genderValidation);
+    setCivilStatusError(civilStatusValidation);
+    setPhotoError(photoValidation);
+
+    if (
+      !firstNameValidation &&
+      !middleNameValidation &&
+      !lastNameValidation &&
+      !contactValidation &&
+      !dobValidation &&
+      !genderValidation &&
+      !civilStatusValidation &&
+      !photoValidation
+    ) {
+      if (onNext)
+        onNext({
+          firstName: firstName.trim(),
+          middleName: middleName.trim(),
+          lastName: lastName.trim(),
+          suffix: suffix.trim(),
+          dateOfBirth: dateOfBirth ?? "",
+          gender: gender as "male" | "female" | "other",
+          civilStatus: civilStatus as
+            | "single"
+            | "married"
+            | "widowed"
+            | "separated"
+            | "divorced",
+          contactNumber: formatContactNumber(contactNumber),
+          profilePhotoUri: photoUri,
+        });
+    }
   };
 
   const handleBack = () => {
@@ -117,63 +286,80 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
       {/* Photo Section */}
       <View style={styles.photoSection}>
         <View style={styles.photoPlaceholder}>
-          <Image
-            source={require("../../../../../../assets/icons/no-photo.png")}
-            style={styles.photoImage}
-          />
-          <Text style={styles.photoLabel}>No Photo Selected</Text>
+          {photoUri ? (
+            <Image source={{ uri: photoUri }} style={styles.photoSelected} />
+          ) : (
+            <>
+              <Image
+                source={require("../../../../../../assets/icons/no-photo.png")}
+                style={styles.photoImage}
+              />
+              <Text style={styles.photoLabel}>No Photo Selected</Text>
+            </>
+          )}
         </View>
 
-        <TouchableOpacity
-          style={styles.cameraButton}
-          activeOpacity={0.8}
-          onPress={() => {}}
-        >
-          <Image
-            source={require("../../../../../../assets/icons/camera.png")}
-            style={styles.cameraIcon}
-          />
-        </TouchableOpacity>
+        {!photoUri && (
+          <TouchableOpacity
+            style={styles.cameraButton}
+            activeOpacity={0.8}
+            onPress={handleUploadPhoto}
+          >
+            <Image
+              source={require("../../../../../../assets/icons/camera.png")}
+              style={styles.cameraIcon}
+            />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.photoActionsRow}>
           <TouchableOpacity
             style={[styles.photoActionButton, styles.photoActionPrimary]}
             activeOpacity={0.8}
-            onPress={() => {}}
+            onPress={handleUploadPhoto}
           >
             <Text style={styles.photoActionPrimaryText}>Upload Photo</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.photoActionButton, styles.photoActionSecondary]}
-            activeOpacity={0.8}
-            onPress={() => {}}
-          >
-            <Text style={styles.photoActionSecondaryText}>Take Photo</Text>
-          </TouchableOpacity>
         </View>
+        {photoError ? <Text style={styles.errorText}>{photoError}</Text> : null}
       </View>
 
       {/* Form Fields */}
       <AppInput
         label="First Name"
+        required
         placeholder="e.g. Juan"
         value={firstName}
-        onChangeText={setFirstName}
+        onChangeText={(value) => {
+          setFirstName(value);
+          if (firstNameError) setFirstNameError("");
+        }}
+        error={firstNameError}
       />
       <AppInput
         label="Middle Name"
+        required
         placeholder="e.g. Santos"
         value={middleName}
-        onChangeText={setMiddleName}
+        onChangeText={(value) => {
+          setMiddleName(value);
+          if (middleNameError) setMiddleNameError("");
+        }}
+        error={middleNameError}
       />
       <AppInput
         label="Last Name"
+        required
         placeholder="e.g. Dela Cruz"
         value={lastName}
-        onChangeText={setLastName}
+        onChangeText={(value) => {
+          setLastName(value);
+          if (lastNameError) setLastNameError("");
+        }}
+        error={lastNameError}
       />
       <AppInput
-        label="Suffix (Optional)"
+        label="Suffix"
         placeholder="e.g. Jr., Sr."
         value={suffix}
         onChangeText={setSuffix}
@@ -181,7 +367,10 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
 
       {/* Date of Birth (use date picker only) */}
       <View style={styles.dateOfBirthContainer}>
-        <Text style={styles.fieldLabel}>Date of Birth</Text>
+        <Text style={styles.fieldLabel}>
+          Date of Birth
+          <Text style={styles.required}>*</Text>
+        </Text>
         <TouchableOpacity
           style={styles.dateInput}
           activeOpacity={0.8}
@@ -193,6 +382,9 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
             {formattedDOB || "MM/DD/YYYY"}
           </Text>
         </TouchableOpacity>
+        {dateOfBirthError ? (
+          <Text style={styles.errorText}>{dateOfBirthError}</Text>
+        ) : null}
 
         <Modal visible={showDOBPicker} transparent animationType="fade">
           <View style={styles.modalOverlay}>
@@ -262,26 +454,35 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
 
       {/* Contact Number */}
       <View style={styles.contactContainer}>
-        <Text style={styles.fieldLabel}>Contact Number</Text>
+        <Text style={styles.fieldLabel}>
+          Contact Number
+          <Text style={styles.required}>*</Text>
+        </Text>
         <View style={styles.contactInputRow}>
           <View style={styles.countryPrefix}>
             <Text style={styles.countryPrefixText}>🇵🇭 +63</Text>
           </View>
           <TextInput
             value={formattedContact.replace(/^\+63\s*/, "")}
-            onChangeText={(t) => setContactNumber(t)}
+            onChangeText={handleContactNumberChange}
             placeholder="923 323 2323"
             placeholderTextColor={COLORS.border}
             keyboardType="phone-pad"
             style={styles.contactInput}
-            maxLength={14}
+            maxLength={12}
           />
         </View>
+        {contactNumberError ? (
+          <Text style={styles.errorText}>{contactNumberError}</Text>
+        ) : null}
       </View>
 
       {/* Gender Selector */}
       <View style={styles.segmentedControl}>
-        <Text style={styles.fieldLabel}>Gender</Text>
+        <Text style={styles.fieldLabel}>
+          Gender
+          <Text style={styles.required}>*</Text>
+        </Text>
         <View style={styles.segmentRow}>
           {[
             { key: "male", label: "Male" },
@@ -294,7 +495,10 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
                 key={option.key}
                 style={[styles.segmentItem, active && styles.segmentItemActive]}
                 activeOpacity={0.8}
-                onPress={() => setGender(option.key)}
+                onPress={() => {
+                  setGender(option.key);
+                  if (genderError) setGenderError("");
+                }}
               >
                 <Text
                   style={
@@ -309,11 +513,17 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
             );
           })}
         </View>
+        {genderError ? (
+          <Text style={styles.errorText}>{genderError}</Text>
+        ) : null}
       </View>
 
       {/* Civil Status Dropdown */}
       <View style={styles.dropdownContainer}>
-        <Text style={styles.fieldLabel}>Civil Status</Text>
+        <Text style={styles.fieldLabel}>
+          Civil Status
+          <Text style={styles.required}>*</Text>
+        </Text>
         <TouchableOpacity
           style={styles.dropdownButton}
           activeOpacity={0.8}
@@ -335,6 +545,7 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
                   onPress={() => {
                     setCivilStatus(key);
                     setStatusOpen(false);
+                    if (civilStatusError) setCivilStatusError("");
                   }}
                 >
                   <Text style={styles.dropdownOptionText}>
@@ -345,6 +556,9 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
             )}
           </View>
         )}
+        {civilStatusError ? (
+          <Text style={styles.errorText}>{civilStatusError}</Text>
+        ) : null}
       </View>
 
       {/* Action Buttons */}
@@ -357,10 +571,6 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
           style={styles.nextButton}
         />
       </View>
-
-      <TouchableOpacity onPress={handleBack} style={styles.backButtonTouch}>
-        <Text style={styles.backText}>← Back to Previous Step</Text>
-      </TouchableOpacity>
 
       {/* Privacy Notice Card */}
       <View style={styles.noticeCard}>
@@ -462,6 +672,11 @@ const styles = StyleSheet.create({
     height: 30,
     resizeMode: "contain",
   },
+  photoSelected: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 999,
+  },
   photoLabel: {
     marginTop: SPACING.md,
     color: COLORS.paragraph,
@@ -544,6 +759,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: COLORS.white,
     height: 48,
+  },
+  required: {
+    color: COLORS.danger,
+  },
+  errorText: {
+    marginTop: SPACING.xs,
+    color: COLORS.danger,
+    fontSize: FONT_SIZE.body12,
+    fontFamily: FONT_FAMILY.regular,
   },
 
   contactContainer: {
