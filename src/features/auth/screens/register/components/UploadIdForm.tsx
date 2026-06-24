@@ -9,18 +9,12 @@ type Props = {
 };
 
 const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
-  const [frontUri, setFrontUri] = useState<string | null>(null);
-  const [backUri, setBackUri] = useState<string | null>(null);
+  const [idUri, setIdUri] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
 
-  const handleUploadFront = () => {
+  const handleUploadId = () => {
     // Placeholder for camera/gallery action
-    console.log("Upload front ID");
-  };
-
-  const handleUploadBack = () => {
-    // Placeholder for camera/gallery action
-    console.log("Upload back ID");
+    console.log("Upload ID");
   };
 
   const handleSubmit = () => {
@@ -29,91 +23,45 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
 
   return (
     <View style={styles.container}>
-      {/* Front ID Upload Card */}
+      {/* Upload Document Label */}
       <View style={styles.uploadSectionLabel}>
-        <Text style={styles.sectionTitle}>Front Side of ID</Text>
+        <Text style={styles.sectionTitle}>UPLOAD DOCUMENT</Text>
       </View>
 
+      {/* ID Upload Card */}
       <TouchableOpacity
-        style={[styles.uploadCard, frontUri && styles.uploadCardWithImage]}
+        style={[styles.uploadCard, idUri && styles.uploadCardWithImage]}
         activeOpacity={0.8}
-        onPress={handleUploadFront}
+        onPress={handleUploadId}
       >
-        {frontUri ? (
+        {idUri ? (
           <Image
-            source={{ uri: frontUri }}
+            source={{ uri: idUri }}
             style={styles.previewImage}
             resizeMode="contain"
           />
         ) : (
           <View style={styles.uploadCardContent}>
-            <Image
-              source={require("../../../../../assets/icons/upload.png")}
-              style={styles.uploadIcon}
-              resizeMode="contain"
-            />
-            <Text style={styles.uploadPrompt}>Tap to upload</Text>
+            <View style={styles.uploadIconContainer}>
+              <Image
+                source={require("../../../../../../assets/icons/upload.png")}
+                style={styles.uploadIcon}
+                resizeMode="contain"
+              />
+            </View>
+            <Text style={styles.uploadPrompt}>Click to upload</Text>
             <Text style={styles.uploadSubtext}>
-              Supported formats: JPG, PNG
+              or drag and drop your scanned ID{"\n"}(JPG, PNG, PDF)
             </Text>
           </View>
         )}
       </TouchableOpacity>
-
-      {/* Back ID Upload Card */}
-      <View style={[styles.uploadSectionLabel, { marginTop: SPACING.lg }]}>
-        <Text style={styles.sectionTitle}>Back Side of ID</Text>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.uploadCard, backUri && styles.uploadCardWithImage]}
-        activeOpacity={0.8}
-        onPress={handleUploadBack}
-      >
-        {backUri ? (
-          <Image
-            source={{ uri: backUri }}
-            style={styles.previewImage}
-            resizeMode="contain"
-          />
-        ) : (
-          <View style={styles.uploadCardContent}>
-            <Image
-              source={require("../../../../../assets/icons/upload.png")}
-              style={styles.uploadIcon}
-              resizeMode="contain"
-            />
-            <Text style={styles.uploadPrompt}>Tap to upload</Text>
-            <Text style={styles.uploadSubtext}>
-              Supported formats: JPG, PNG
-            </Text>
-          </View>
-        )}
-      </TouchableOpacity>
-
-      {/* Action Buttons */}
-      <View style={styles.actionButtonsRow}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          activeOpacity={0.8}
-          onPress={handleUploadFront}
-        >
-          <Text style={styles.actionButtonText}>Take Photo</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.actionButton}
-          activeOpacity={0.8}
-          onPress={handleUploadBack}
-        >
-          <Text style={styles.actionButtonText}>Choose From Gallery</Text>
-        </TouchableOpacity>
-      </View>
 
       {/* Verification Notice */}
       <View style={styles.verificationCard}>
         <View style={styles.verificationCardHeader}>
           <Image
-            source={require("../../../../../assets/icons/info.png")}
+            source={require("../../../../../../assets/icons/shield-check.png")}
             style={styles.verificationIcon}
             resizeMode="contain"
           />
@@ -136,8 +84,9 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
             {checked && <Text style={styles.checkboxTick}>✓</Text>}
           </View>
           <Text style={styles.checkboxLabel}>
-            I certify that all information and documents submitted are authentic
-            and belong to me.
+            I certify that all information provided is true and accurate. I
+            understand that providing false information is a punishable offense
+            under local ordinance.
           </Text>
         </TouchableOpacity>
       </View>
@@ -149,7 +98,7 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack }) => {
           onPress={handleSubmit}
           variant="primary"
           fullWidth
-          disabled={!checked || !frontUri || !backUri}
+          disabled={!checked || !idUri}
         />
       </View>
 
@@ -182,11 +131,11 @@ const styles = StyleSheet.create({
     borderStyle: "dashed",
     borderRadius: SPACING.lg,
     padding: SPACING.lg,
-    minHeight: 160,
+    minHeight: 200,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(59, 130, 246, 0.05)",
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   uploadCardWithImage: {
     borderStyle: "solid",
@@ -195,44 +144,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  uploadIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    backgroundColor: "rgba(59, 130, 246, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: SPACING.lg,
+  },
   uploadIcon: {
-    width: 32,
-    height: 32,
-    marginBottom: SPACING.md,
+    width: 24,
+    height: 24,
   },
   uploadPrompt: {
-    fontSize: FONT_SIZE.body14,
+    fontSize: FONT_SIZE.h20,
     fontFamily: FONT_FAMILY.semibold,
     color: COLORS.heading,
-    marginBottom: SPACING.xs,
+    marginBottom: SPACING.sm,
   },
   uploadSubtext: {
     fontSize: FONT_SIZE.body12,
     fontFamily: FONT_FAMILY.regular,
     color: COLORS.paragraph,
+    textAlign: "center",
+    lineHeight: FONT_SIZE.body12 * 1.5,
   },
   previewImage: {
     width: "100%",
     height: 140,
-  },
-  actionButtonsRow: {
-    flexDirection: "row",
-    gap: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: SPACING.md,
-    borderRadius: SPACING.md,
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    alignItems: "center",
-  },
-  actionButtonText: {
-    fontSize: FONT_SIZE.body12,
-    fontFamily: FONT_FAMILY.semibold,
-    color: COLORS.heading,
   },
   verificationCard: {
     backgroundColor: "rgba(59, 130, 246, 0.08)",

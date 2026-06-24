@@ -46,28 +46,29 @@ const UploadIdentificationScreen: React.FC = () => {
         </View>
       </View>
 
+      {/* Illustration Section */}
+      <View style={styles.illustrationBox}>
+        <Image
+          source={require("../../../../../assets/images/ScanId.png")}
+          resizeMode="contain"
+          style={styles.illustration}
+        />
+      </View>
+
       {/* Header Section */}
-      <View style={styles.headerSection}>
-        <View style={styles.iconContainer}>
-          <Image
-            source={require("../../../../assets/icons/id-card.png")}
-            resizeMode="contain"
-            style={styles.iconImage}
-          />
-        </View>
-        <View style={styles.headerTextWrap}>
-          <Text style={styles.headerTitle}>Upload Identification</Text>
-          <Text style={styles.headerSubtitle}>
-            Please upload a valid government-issued ID for verification.
-          </Text>
-        </View>
+      <View style={styles.headerTextSection}>
+        <Text style={styles.headerTitle}>Scan Your ID</Text>
+        <Text style={styles.headerSubtitle}>
+          Ensure your National ID or Voter's ID is clearly visible and within
+          the frame.
+        </Text>
       </View>
 
       {/* Accepted IDs Card */}
       <View style={styles.infoCard}>
         <View style={styles.infoCardHeader}>
           <Image
-            source={require("../../../../assets/icons/shield.png")}
+            source={require("../../../../../assets/icons/shield-check.png")}
             resizeMode="contain"
             style={styles.infoCardIcon}
           />
@@ -138,6 +139,24 @@ const styles = StyleSheet.create({
   },
   progressSegmentActive: {
     backgroundColor: COLORS.primary,
+  },
+  illustrationBox: {
+    width: "100%",
+    aspectRatio: 1,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: SPACING.xl,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.white,
+    marginBottom: SPACING.xl,
+  },
+  illustration: {
+    width: "70%",
+    height: "70%",
+  },
+  headerTextSection: {
+    marginBottom: SPACING.lg,
   },
   headerSection: {
     flexDirection: "row",
