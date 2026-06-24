@@ -11,9 +11,14 @@ type ResidenceInfoFormState = {
   barangay: string;
 };
 
+type Props = {
+  onNext?: () => void;
+  onBack?: () => void;
+};
+
 const barangayOptions = ["San Isidro", "San Roque", "Poblacion", "Mabini"];
 
-const ResidenceInfoForm: React.FC = () => {
+const ResidenceInfoForm: React.FC<Props> = ({ onNext, onBack }) => {
   const [form, setForm] = useState<ResidenceInfoFormState>({
     blockNumber: "",
     lotNumber: "",
@@ -24,6 +29,14 @@ const ResidenceInfoForm: React.FC = () => {
 
   const handleChange = (key: keyof ResidenceInfoFormState, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleNext = () => {
+    if (onNext) onNext();
+  };
+
+  const handleBack = () => {
+    if (onBack) onBack();
   };
 
   return (
@@ -50,7 +63,7 @@ const ResidenceInfoForm: React.FC = () => {
       <View style={styles.headerSection}>
         <View style={styles.iconContainer}>
           <Image
-            source={require("../../../../../../assets/icons/location.png")}
+            source={require("../../../../../assets/icons/location.png")}
             resizeMode="contain"
             style={styles.iconImage}
           />
@@ -127,19 +140,23 @@ const ResidenceInfoForm: React.FC = () => {
       <View style={styles.actionsRow}>
         <AppButton
           label="Next Step"
-          onPress={() => {}}
+          onPress={handleNext}
           variant="primary"
           fullWidth
         />
       </View>
-      <TouchableOpacity style={styles.backButtonTouch} activeOpacity={0.8}>
+      <TouchableOpacity
+        style={styles.backButtonTouch}
+        activeOpacity={0.8}
+        onPress={handleBack}
+      >
         <Text style={styles.backText}>← Back to Previous Step</Text>
       </TouchableOpacity>
 
       <View style={styles.noticeCard}>
         <View style={styles.noticeIcon}>
           <Image
-            source={require("../../../../../../assets/icons/shield-check.png")}
+            source={require("../../../../../assets/icons/shield-check.png")}
             resizeMode="contain"
             style={styles.noticeIconImage}
           />
@@ -299,6 +316,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 12,
+    backgroundColor: "rgba(59, 130, 246, 0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
