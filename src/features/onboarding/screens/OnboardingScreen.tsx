@@ -1,25 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   Image,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
+  Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { RootStackNavigationProp } from "../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
+import type { OnboardingSlide } from "../onboardingData";
 import { ONBOARDING_SLIDES } from "../onboardingData";
 import { OnboardingStorage } from "../onboardingStorage";
+
+const { width } = Dimensions.get("window");
 
 const OnboardingScreen: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation<RootStackNavigationProp>();
+  const flatListRef = useRef<FlatList<OnboardingSlide>>(null);
 
-  const currentSlide = ONBOARDING_SLIDES[currentIndex];
   const isLastSlide = currentIndex === ONBOARDING_SLIDES.length - 1;
 
   const handleSkip = async () => {
@@ -36,9 +42,12 @@ const OnboardingScreen: React.FC = () => {
   const handleNext = () => {
     if (isLastSlide) {
       handleGetStarted();
-    } else {
-      setCurrentIndex(currentIndex + 1);
+      return;
     }
+
+    const nextIndex = currentIndex + 1;
+    setCurrentIndex(nextIndex);
+    flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
   };
 
   const handleGetStarted = async () => {
@@ -52,6 +61,27 @@ const OnboardingScreen: React.FC = () => {
     }
   };
 
+  const handleMomentumScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const nextIndex = Math.round(offsetX / width);
+    setCurrentIndex(nextIndex);
+  };
+
+  const handlePaginationPress = (index: number) => {
+    setCurrentIndex(index);
+    flatListRef.current?.scrollToIndex({ index, animated: true });
+  };
+
+  const renderItem = ({ item }: { item: OnboardingSlide }) => (
+    <View style={styles.slide}>
+      <Image source={item.image} style={styles.image} resizeMode="contain" />
+      <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.description}>{item.description}</Text>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={["left", "right", "top"]}>
       <View style={styles.headerContainer}>
@@ -64,32 +94,39 @@ const OnboardingScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        style={styles.content}
-        scrollEnabled={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <Image
-          source={currentSlide.image}
-          style={styles.image}
-          resizeMode="contain"
-        />
-
-        <Text style={styles.title}>{currentSlide.title}</Text>
-
-        <Text style={styles.description}>{currentSlide.description}</Text>
-      </ScrollView>
+      <FlatList
+        ref={flatListRef}
+        data={ONBOARDING_SLIDES}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        onMomentumScrollEnd={handleMomentumScrollEnd}
+        getItemLayout={(_, index) => ({
+          length: width,
+          offset: width * index,
+          index,
+        })}
+        initialScrollIndex={0}
+        extraData={currentIndex}
+      />
 
       <View style={styles.footerContainer}>
         <View style={styles.paginationContainer}>
           {ONBOARDING_SLIDES.map((_, index) => (
-            <View
+            <TouchableOpacity
               key={index}
-              style={[
-                styles.paginationDot,
-                index === currentIndex && styles.paginationDotActive,
-              ]}
-            />
+              onPress={() => handlePaginationPress(index)}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.paginationDot,
+                  index === currentIndex && styles.paginationDotActive,
+                ]}
+              />
+            </TouchableOpacity>
           ))}
         </View>
 
@@ -124,6 +161,12 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.semibold,
     color: COLORS.primary,
   },
+  slide: {
+    width,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: SPACING.lg,
+  },
   content: {
     flex: 1,
   },
@@ -134,13 +177,13 @@ const styles = StyleSheet.create({
   },
   image: {
     width: "100%",
-    height: 300,
+    height: 442,
     marginBottom: SPACING.xxxl,
   },
   title: {
-    fontSize: FONT_SIZE.h24,
+    fontSize: FONT_SIZE.h32,
     fontFamily: FONT_FAMILY.semibold,
-    color: COLORS.heading,
+    color: COLORS.primary,
     textAlign: "center",
     marginBottom: SPACING.md,
   },
