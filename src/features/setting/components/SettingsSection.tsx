@@ -21,17 +21,18 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
   },
   title: {
-    paddingHorizontal: SPACING.lg,
     color: COLORS.placeholder || "#637381",
     fontFamily: FONT_FAMILY.semibold,
-    fontSize: FONT_SIZE.body12,
-    marginBottom: SPACING.sm,
+    fontSize: FONT_SIZE.h16,
+    marginBottom: SPACING.xs,
   },
   body: {
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(193,198,213,0.2)",
+    borderRadius: 16,
     overflow: "hidden",
-    marginHorizontal: SPACING.lg,
+    width: "100%",
+    backgroundColor: COLORS.white,
   },
 });
 

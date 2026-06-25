@@ -17,12 +17,12 @@ const LogoutButton: React.FC<{ onPress?: () => void }> = ({ onPress }) => {
 const styles = StyleSheet.create({
   button: {
     backgroundColor: COLORS.danger || "#D9534F",
-    marginHorizontal: SPACING.lg,
+    width: "100%",
     paddingVertical: SPACING.md,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: SPACING.lg,
+    marginTop: SPACING.md,
     marginBottom: SPACING.lg,
   },
   label: {

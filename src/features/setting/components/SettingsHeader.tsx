@@ -12,13 +12,14 @@ const SettingsHeader: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
   },
   title: {
-    fontFamily: FONT_FAMILY.semibold,
-    fontSize: FONT_SIZE.h20,
+    fontFamily: FONT_FAMILY.bold,
+    fontSize: FONT_SIZE.h24,
     color: COLORS.heading,
+    textAlign: "center",
   },
 });
 

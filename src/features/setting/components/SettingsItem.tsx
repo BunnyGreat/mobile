@@ -25,11 +25,13 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
       <View style={styles.right}>
         {value !== undefined && <Text style={styles.value}>{value}</Text>}
         {rightComponent}
-        <Feather
-          name="chevron-right"
-          size={18}
-          color={COLORS.placeholder || "#9AA7B2"}
-        />
+        {onPress ? (
+          <Feather
+            name="chevron-right"
+            size={18}
+            color={COLORS.placeholder || "#9AA7B2"}
+          />
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -52,8 +54,8 @@ const styles = StyleSheet.create({
   },
   label: {
     marginLeft: SPACING.sm,
-    fontFamily: FONT_FAMILY.regular,
-    fontSize: FONT_SIZE.body14,
+    fontFamily: FONT_FAMILY.medium,
+    fontSize: FONT_SIZE.h16,
     color: COLORS.heading,
   },
   right: {
@@ -65,7 +67,7 @@ const styles = StyleSheet.create({
     marginRight: SPACING.xs,
     color: COLORS.placeholder || "#64748B",
     fontFamily: FONT_FAMILY.medium,
-    fontSize: FONT_SIZE.body12,
+    fontSize: FONT_SIZE.body14,
   },
 });
 

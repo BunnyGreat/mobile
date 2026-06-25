@@ -1,8 +1,7 @@
 import React, { useState } from "react";
-import { StyleSheet, View, SafeAreaView, ScrollView } from "react-native";
-import ScreenContainer from "../../../components/common/ScreenContainer";
+import { StyleSheet, ScrollView } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
-import SettingsHeader from "../components/SettingsHeader";
 import ProfileCard from "../components/ProfileCard";
 import SettingsSection from "../components/SettingsSection";
 import SettingsItem from "../components/SettingsItem";
@@ -22,50 +21,112 @@ const SettingScreen: React.FC = () => {
   const [aboutOpen, setAboutOpen] = useState(false);
 
   return (
-    <ScreenContainer>
-      <SafeAreaView style={styles.safe}>
-        <SettingsHeader />
-        <ScrollView contentContainerStyle={styles.scroll}>
-          <ProfileCard
+    <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        <ProfileCard
+          onPress={() => navigation.navigate("ProfileScreen" as never)}
+        />
+
+        <SettingsSection title="Account">
+          <SettingsItem
+            icon="user"
+            label="Profile Information"
             onPress={() => navigation.navigate("ProfileScreen" as never)}
           />
+          <SettingsItem
+            icon="lock"
+            label="Change Password"
+            onPress={() => navigation.navigate("ChangePasswordScreen" as never)}
+          />
+        </SettingsSection>
 
-          <SettingsSection title="Account">
-            <SettingsItem icon="user" label="Profile Information" onPress={() => navigation.navigate("ProfileScreen" as never)} />
-            <SettingsItem icon="lock" label="Change Password" onPress={() => navigation.navigate("ChangePasswordScreen" as never)} />
-          </SettingsSection>
+        <SettingsSection title="Preferences">
+          <SettingsItem
+            icon="globe"
+            label="Language"
+            value="English"
+            onPress={undefined}
+          />
+          <SettingsItem
+            icon="bell"
+            label="Notifications"
+            rightComponent={<SettingsToggle />}
+            onPress={undefined}
+          />
+        </SettingsSection>
 
-          <SettingsSection title="Preferences">
-            <SettingsItem icon="globe" label="Language" value="English" onPress={undefined} />
-            <SettingsItem icon="bell" label="Notifications" rightComponent={<SettingsToggle />} onPress={undefined} />
-          </SettingsSection>
+        <SettingsSection title="Privacy & Security">
+          <SettingsItem
+            icon="shield"
+            label="Privacy Policy"
+            onPress={() => setPrivacyOpen(true)}
+          />
+          <SettingsItem
+            icon="file-text"
+            label="Terms & Conditions"
+            onPress={() => setTermsOpen(true)}
+          />
+          <SettingsItem
+            icon="database"
+            label="Data & Permissions"
+            onPress={() => setDataOpen(true)}
+          />
+        </SettingsSection>
 
-          <SettingsSection title="Privacy & Security">
-            <SettingsItem icon="shield" label="Privacy Policy" onPress={() => setPrivacyOpen(true)} />
-            <SettingsItem icon="file-text" label="Terms & Conditions" onPress={() => setTermsOpen(true)} />
-            <SettingsItem icon="database" label="Data & Permissions" onPress={() => setDataOpen(true)} />
-          </SettingsSection>
+        <SettingsSection title="About">
+          <SettingsItem
+            icon="info"
+            label="Version"
+            value="1.0.0"
+            onPress={undefined}
+          />
+          <SettingsItem
+            icon="file-text"
+            label="About Application"
+            onPress={() => setAboutOpen(true)}
+          />
+        </SettingsSection>
 
-          <SettingsSection title="About">
-            <SettingsItem icon="info" label="Version" value="1.0.0" onPress={undefined} />
-            <SettingsItem icon="file-text" label="About Application" onPress={() => setAboutOpen(true)} />
-          </SettingsSection>
-
-          <LogoutButton onPress={() => { /* placeholder */ }} />
-        </ScrollView>
-
-        <PrivacyPolicyModal visible={privacyOpen} onClose={() => setPrivacyOpen(false)} />
-        <TermsConditionsModal visible={termsOpen} onClose={() => setTermsOpen(false)} />
-        <DataPermissionsModal visible={dataOpen} onClose={() => setDataOpen(false)} />
-        <AboutApplicationModal visible={aboutOpen} onClose={() => setAboutOpen(false)} />
-      </SafeAreaView>
-    </ScreenContainer>
+        <LogoutButton
+          onPress={() => {
+            /* placeholder */
+          }}
+        />
+        <PrivacyPolicyModal
+          visible={privacyOpen}
+          onClose={() => setPrivacyOpen(false)}
+        />
+        <TermsConditionsModal
+          visible={termsOpen}
+          onClose={() => setTermsOpen(false)}
+        />
+        <DataPermissionsModal
+          visible={dataOpen}
+          onClose={() => setDataOpen(false)}
+        />
+        <AboutApplicationModal
+          visible={aboutOpen}
+          onClose={() => setAboutOpen(false)}
+        />
+      </ScrollView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.background },
-  scroll: { paddingBottom: SPACING.xl, paddingTop: SPACING.sm },
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+  },
+  scroll: {
+    paddingBottom: SPACING.lg,
+    paddingTop: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    backgroundColor: COLORS.background,
+  },
 });
 
 export default SettingScreen;

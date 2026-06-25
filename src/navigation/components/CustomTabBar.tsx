@@ -1,11 +1,6 @@
 import React from "react";
-import {
-  View,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  Image,
-} from "react-native";
+import { View, TouchableOpacity, StyleSheet, Image } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
@@ -33,7 +28,7 @@ const TAB_ITEMS: TabItem[] = [
 
 const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
   return (
-    <View style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
       <View style={styles.container}>
         {state.routes.map((route, index) => {
           const isFocused = state.index === index;
@@ -68,14 +63,15 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
               key={route.key}
               onPress={onPress}
               onLongPress={onLongPress}
-              style={[
-                styles.tabButton,
-                isDigitalTab && styles.centerButtonWrapper,
-              ]}
+              style={[styles.tabButton, isDigitalTab && styles.centerTabButton]}
               activeOpacity={0.7}
             >
               <View
-                style={isDigitalTab ? styles.centerButton : styles.iconWrapper}
+                style={
+                  isDigitalTab
+                    ? [styles.centerButton, styles.centerButtonFloating]
+                    : styles.iconWrapper
+                }
               >
                 {isDigitalTab ? (
                   <Image source={digitalIdIcon} style={styles.digitalIdIcon} />
@@ -98,29 +94,35 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
           );
         })}
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: { backgroundColor: COLORS.white, borderTopColor: COLORS.white },
+  safeArea: {
+    backgroundColor: "transparent",
+  },
   container: {
     flexDirection: "row",
-    alignItems: "flex-end",
+    alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.sm,
-    paddingBottom: Platform.OS === "ios" ? SPACING.lg : SPACING.md,
+    paddingTop: 4,
+    paddingBottom: 8,
     backgroundColor: COLORS.white,
-    ...SHADOWS.small,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(0,0,0,0.08)",
   },
   tabButton: {
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-end",
-    paddingVertical: SPACING.xs,
+    paddingVertical: 6,
+    position: "relative",
   },
-  centerButtonWrapper: { marginTop: -SPACING.lg, zIndex: 10 },
+  centerTabButton: {
+    paddingTop: 32,
+  },
   iconWrapper: {
     alignItems: "center",
     justifyContent: "center",
@@ -128,15 +130,24 @@ const styles = StyleSheet.create({
     height: 24,
   },
   centerButton: {
-    width: 66,
-    height: 66,
-    borderRadius: 33,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: COLORS.primary,
-    borderWidth: 4,
+    borderWidth: 2,
     borderColor: COLORS.white,
     alignItems: "center",
     justifyContent: "center",
-    ...SHADOWS.large,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  centerButtonFloating: {
+    position: "absolute",
+    top: -28,
+    zIndex: 20,
   },
   tabIcon: {
     width: 22,
@@ -147,19 +158,25 @@ const styles = StyleSheet.create({
     tintColor: COLORS.primary,
   },
   digitalIdIcon: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
     resizeMode: "contain",
     tintColor: COLORS.white,
   },
   tabLabel: {
     fontSize: FONT_SIZE.body12,
     fontFamily: FONT_FAMILY.regular,
-    marginTop: SPACING.xs,
+    marginTop: 2,
     textAlign: "center",
   },
-  tabLabelActive: { fontFamily: FONT_FAMILY.semibold },
-  centerLabel: { color: COLORS.primary, fontFamily: FONT_FAMILY.semibold },
+  tabLabelActive: {
+    fontFamily: FONT_FAMILY.semibold,
+  },
+  centerLabel: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY.semibold,
+    marginTop: 2,
+  },
 });
 
 export default CustomTabBar;
