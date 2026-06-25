@@ -15,8 +15,6 @@ const HeroHeader: React.FC = () => {
   const lastName = user?.personalInformation?.lastName ?? "";
   const profilePhotoUrl = user?.profilePhotoUrl;
 
-  console.log("[HOME] profilePhotoUrl", profilePhotoUrl);
-
   const fullName = [
     firstName,
     middleName ? `${middleName.charAt(0)}.` : null,

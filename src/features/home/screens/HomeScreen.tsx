@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet } from "react-native";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import HeroHeader from "../components/HeroHeader";
 import HeroCarousel from "../components/HeroCarousel";
+import WeatherCard from "../components/WeatherCard";
 
 const HomeScreen: React.FC = () => {
   return (
@@ -11,6 +12,7 @@ const HomeScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scroll}>
         <HeroHeader />
         <HeroCarousel />
+        <WeatherCard />
       </ScrollView>
     </SafeAreaView>
   );
