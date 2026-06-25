@@ -18,7 +18,7 @@ import type { OnboardingSlide } from "../onboardingData";
 import { ONBOARDING_SLIDES } from "../onboardingData";
 import { OnboardingStorage } from "../onboardingStorage";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 const OnboardingScreen: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -76,14 +76,19 @@ const OnboardingScreen: React.FC = () => {
 
   const renderItem = ({ item }: { item: OnboardingSlide }) => (
     <View style={styles.slide}>
-      <Image source={item.image} style={styles.image} resizeMode="contain" />
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.description}>{item.description}</Text>
+      <View style={styles.imageContainer}>
+        <Image source={item.image} style={styles.image} resizeMode="contain" />
+      </View>
+
+      <View style={styles.contentContainer}>
+        <Text style={styles.title}>{item.title}</Text>
+        <Text style={styles.description}>{item.description}</Text>
+      </View>
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.container} edges={["left", "right", "top"]}>
+    <SafeAreaView style={styles.container} edges={["left", "right", "top", "bottom"]}>
       <View style={styles.headerContainer}>
         <TouchableOpacity
           onPress={handleSkip}
@@ -102,6 +107,8 @@ const OnboardingScreen: React.FC = () => {
         showsHorizontalScrollIndicator={false}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        style={styles.flatList}
+        contentContainerStyle={styles.flatListContent}
         onMomentumScrollEnd={handleMomentumScrollEnd}
         getItemLayout={(_, index) => ({
           length: width,
@@ -161,31 +168,38 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.semibold,
     color: COLORS.primary,
   },
+  flatList: { flex: 1 },
+  flatListContent: { flexGrow: 1 },
   slide: {
     width,
+    flex: 1,
+    paddingHorizontal: SPACING.lg,
+  },
+  imageContainer: {
+    width: "100%",
+    height: Math.min(Math.round(height * 0.45), 520),
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: SPACING.lg,
   },
   content: {
     flex: 1,
   },
-  scrollContent: {
+  contentContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
     alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.sm,
   },
   image: {
     width: "100%",
-    height: 442,
-    marginBottom: SPACING.xxxl,
+    height: "100%",
   },
   title: {
     fontSize: FONT_SIZE.h32,
     fontFamily: FONT_FAMILY.semibold,
     color: COLORS.primary,
     textAlign: "center",
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
   },
   description: {
     fontSize: FONT_SIZE.body16,
@@ -197,13 +211,13 @@ const styles = StyleSheet.create({
   },
   footerContainer: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: SPACING.lg,
   },
   paginationContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: SPACING.xxl,
+    marginBottom: SPACING.md,
   },
   paginationDot: {
     width: 8,

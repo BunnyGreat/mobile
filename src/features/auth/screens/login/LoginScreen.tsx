@@ -50,7 +50,7 @@ const LoginScreen: React.FC = () => {
         if (result.user.status === "approved") {
           navigation.reset({
             index: 0,
-            routes: [{ name: "Onboarding" }],
+            routes: [{ name: "MainTabs" }],
           });
         } else {
           // Service should return errors for pending/rejected, but handle defensively
