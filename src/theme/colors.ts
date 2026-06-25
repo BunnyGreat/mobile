@@ -10,6 +10,8 @@ export const COLORS = {
 
   inputBackground: "#F8F9FA",
 
+  darkSuccess: "#025E16",
+
   inputBorder: "#C1C6D5",
 
   white: "#FFFFFF",

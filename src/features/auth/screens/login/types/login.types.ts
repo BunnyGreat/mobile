@@ -8,12 +8,20 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface PersonalInformation {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  profilePhotoUrl?: string;
+}
+
 export interface LoginUser {
   uid: string;
   email: string;
   role: string;
   status: AccountStatus;
   referenceId?: string;
+  personalInformation: PersonalInformation;
   profilePhotoUrl?: string;
 }
 

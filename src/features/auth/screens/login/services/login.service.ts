@@ -23,8 +23,13 @@ export const loginUser = async (
     const status: string = data.status ?? "pending";
     const role: string = data.role ?? "resident";
     const referenceId: string | undefined = data.referenceId ?? undefined;
-    const profilePhotoUrl: string | undefined =
-      data.personalInformation?.profilePhotoUrl ?? undefined;
+    const personalInformation = {
+      firstName: data.personalInformation?.firstName ?? "",
+      middleName: data.personalInformation?.middleName ?? "",
+      lastName: data.personalInformation?.lastName ?? "",
+      profilePhotoUrl: data.personalInformation?.profilePhotoUrl ?? undefined,
+    };
+    const profilePhotoUrl: string | undefined = personalInformation.profilePhotoUrl;
 
     if (status === "pending") {
       return { success: false, error: "Your registration is still under review." };
@@ -40,6 +45,7 @@ export const loginUser = async (
       role,
       status: status as any,
       referenceId,
+      personalInformation,
       profilePhotoUrl,
     };
 
