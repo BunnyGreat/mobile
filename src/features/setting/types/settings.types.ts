@@ -1,3 +1,10 @@
+export type SettingsProfile = {
+	profilePhotoUrl?: string;
+	fullName: string;
+	referenceId: string;
+	status: string;
+};
+
 export type ProfileCardProps = {
 	profilePhotoUrl?: string;
 	fullName?: string;

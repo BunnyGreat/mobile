@@ -3,13 +3,25 @@ import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { ProfileCardProps } from "../types/settings.types";
 import { SPACING, FONT_FAMILY, FONT_SIZE, COLORS } from "../../../theme";
 
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase())
+    .slice(0, 2)
+    .join("");
+};
+
 const ProfileCard: React.FC<ProfileCardProps> = ({
   profilePhotoUrl,
-  fullName = "Juan Dela Cruz",
-  referenceId = "REF-2026-00001",
-  status = "Verified Resident",
+  fullName,
+  referenceId,
+  status,
   onPress,
 }) => {
+  const displayName = fullName?.trim() || "Resident";
+  const initials = getInitials(displayName) || "RD";
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -21,15 +33,17 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
           <Image source={{ uri: profilePhotoUrl }} style={styles.avatar} />
         ) : (
           <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarInitials}>JD</Text>
+            <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
         )}
         <View style={styles.info}>
-          <Text style={styles.name}>{fullName}</Text>
-          <Text style={styles.ref}>{referenceId}</Text>
-          <View style={styles.statusBadge}>
-            <Text style={styles.statusText}>{status}</Text>
-          </View>
+          <Text style={styles.name}>{displayName}</Text>
+          {referenceId ? <Text style={styles.ref}>{referenceId}</Text> : null}
+          {status ? (
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>{status}</Text>
+            </View>
+          ) : null}
         </View>
       </View>
     </TouchableOpacity>
@@ -39,8 +53,8 @@ const ProfileCard: React.FC<ProfileCardProps> = ({
 const styles = StyleSheet.create({
   container: {
     width: "100%",
+    paddingVertical: SPACING.lg,
     borderRadius: 16,
-    padding: SPACING.lg,
     marginBottom: SPACING.md,
   },
   row: {

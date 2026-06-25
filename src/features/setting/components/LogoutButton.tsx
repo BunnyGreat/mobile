@@ -2,12 +2,16 @@ import React from "react";
 import { TouchableOpacity, Text, StyleSheet } from "react-native";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 
-const LogoutButton: React.FC<{ onPress?: () => void }> = ({ onPress }) => {
+const LogoutButton: React.FC<{
+  onPress?: () => void;
+  disabled?: boolean;
+}> = ({ onPress, disabled = false }) => {
   return (
     <TouchableOpacity
       activeOpacity={0.8}
       onPress={onPress}
-      style={styles.button}
+      disabled={disabled}
+      style={[styles.button, disabled && styles.disabledButton]}
     >
       <Text style={styles.label}>Logout</Text>
     </TouchableOpacity>
@@ -24,6 +28,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: SPACING.md,
     marginBottom: SPACING.lg,
+  },
+  disabledButton: {
+    opacity: 0.65,
   },
   label: {
     color: COLORS.white || "#fff",
