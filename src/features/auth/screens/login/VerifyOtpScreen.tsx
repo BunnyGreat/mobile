@@ -12,27 +12,44 @@ import {
   TouchableOpacity,
   TextInput,
   Image,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppButton from "../../../../components/ui/AppButton";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
+import { useLoginStore } from "./store/login.store";
+import { resendForgotPasswordOtp } from "./services/forgot-password.service";
 
 const VerifyOtpScreen: React.FC = () => {
   const [otp, setOtp] = useState("");
-  const [countdown, setCountdown] = useState(180);
-  const [email, setEmail] = useState("user@example.com");
+  const [countdown, setCountdown] = useState(0);
+  const [isResending, setIsResending] = useState(false);
   const navigation = useNavigation<RootStackNavigationProp>();
+  const forgotEmail = useLoginStore((s) => s.forgotPasswordEmail);
+  const storedOtp = useLoginStore((s) => s.resetOtp);
+  const otpCreatedAt = useLoginStore((s) => s.otpCreatedAt);
   const otpInputsRef = React.useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((current) => Math.max(0, current - 1));
-    }, 1000);
+    // initialize countdown from otpCreatedAt (5 minutes validity)
+    if (!otpCreatedAt) {
+      setCountdown(0);
+      return;
+    }
 
+    const expiresAt = Math.floor(otpCreatedAt / 1000) + 5 * 60; // seconds
+    const update = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const remaining = Math.max(0, expiresAt - now);
+      setCountdown(remaining);
+    };
+
+    update();
+    const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [otpCreatedAt]);
 
   const formatCountdown = () => {
     const minutes = Math.floor(countdown / 60);
@@ -86,13 +103,64 @@ const VerifyOtpScreen: React.FC = () => {
   };
 
   const handleVerifyCode = () => {
-    // UI only - navigate to ResetPassword without validation
-    navigation.navigate("ResetPassword");
+    if (otp.length !== 6) {
+      Alert.alert("Invalid OTP", "Invalid OTP code.");
+      return;
+    }
+
+    if (countdown <= 0) {
+      Alert.alert("Expired", "OTP has expired. Request a new code.");
+      // clear only OTP and timestamp (keep email for convenience)
+      useLoginStore.getState().saveResetOtp("");
+      useLoginStore.getState().saveOtpCreatedAt(null);
+      return;
+    }
+
+    if (!storedOtp || otp !== storedOtp) {
+      Alert.alert("Invalid OTP", "Invalid OTP code.");
+      return;
+    }
+
+    // After OTP verification, send Firebase password reset email with deep link
+    // Use sendPasswordResetEmail so no Cloud Functions are required
+    const email = forgotEmail;
+    if (!email) {
+      Alert.alert("Error", "No email associated with reset flow.");
+      return;
+    }
+
+    // Import lazily to avoid cycle at module load
+    import("./services/reset-password.service").then(async (mod) => {
+      try {
+        await mod.sendPasswordResetLink(email, {
+          url: "barangay://reset-password",
+          handleCodeInApp: true,
+        } as any);
+        Alert.alert(
+          "Success",
+          "Password reset link has been sent to your email.",
+        );
+        navigation.navigate("Login");
+      } catch (err: unknown) {
+        const e = err as Error;
+        Alert.alert("Error", e.message ?? "Failed to send reset link.");
+      }
+    });
   };
 
-  const handleResendCode = () => {
-    // UI only - just log
-    console.log("Resend OTP");
+  const handleResendCode = async () => {
+    if (countdown > 0) return;
+    if (isResending) return;
+    setIsResending(true);
+    try {
+      await resendForgotPasswordOtp();
+      Alert.alert("Success", "New OTP sent successfully.");
+    } catch (err: unknown) {
+      const e = err as Error;
+      Alert.alert("Error", e.message ?? "Failed to resend OTP.");
+    } finally {
+      setIsResending(false);
+    }
   };
 
   return (
@@ -113,7 +181,8 @@ const VerifyOtpScreen: React.FC = () => {
 
         <Text style={styles.title}>Verify OTP</Text>
         <Text style={styles.subtitle}>
-          We've sent an email to <Text style={styles.emailText}>{email}</Text>{" "}
+          We've sent an email to{" "}
+          <Text style={styles.emailText}>{forgotEmail ?? "your email"}</Text>{" "}
           containing a 6-digit code.
         </Text>
 
@@ -147,8 +216,17 @@ const VerifyOtpScreen: React.FC = () => {
         {/* Resend Code Link */}
         <View style={styles.resendContainer}>
           <Text style={styles.resendText}>Didn't receive the code? </Text>
-          <TouchableOpacity onPress={handleResendCode}>
-            <Text style={styles.resendLink}>Resend Code</Text>
+          <TouchableOpacity
+            onPress={handleResendCode}
+            disabled={countdown > 0 || isResending}
+          >
+            <Text style={styles.resendLink}>
+              {countdown > 0
+                ? `Resend Code (${formatCountdown()})`
+                : isResending
+                  ? "Resending..."
+                  : "Resend Code"}
+            </Text>
           </TouchableOpacity>
         </View>
 

@@ -4,22 +4,54 @@
  * UI only - no backend logic.
  */
 
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppInput from "../../../../components/ui/AppInput";
 import AppButton from "../../../../components/ui/AppButton";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { sendForgotPasswordOtp } from "./services/forgot-password.service";
+
+const schema = z.object({
+  email: z.string().min(1, "Email is required").email("Invalid email address"),
+});
+
+type FormValues = z.infer<typeof schema>;
 
 const ForgotPasswordScreen: React.FC = () => {
-  const [email, setEmail] = useState("");
   const navigation = useNavigation<RootStackNavigationProp>();
 
-  const handleSendVerificationCode = () => {
-    // UI only - navigate to VerifyOtp without any backend logic
-    navigation.navigate("VerifyOtp");
+  const { control, handleSubmit, formState } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: "" },
+  });
+
+  const handleSendVerificationCode = async (values: FormValues) => {
+    if (formState.isSubmitting) return;
+    try {
+      await sendForgotPasswordOtp(values.email.trim());
+      // navigate to VerifyOtp
+      navigation.navigate("VerifyOtp");
+    } catch (err: unknown) {
+      const e = err as Error;
+      if (e.message === "NOT_REGISTERED") {
+        Alert.alert("Error", "This email is not registered.");
+        return;
+      }
+      Alert.alert("Error", e.message ?? "Failed to send verification code.");
+    }
   };
 
   const handleLoginPress = () => {
@@ -49,28 +81,38 @@ const ForgotPasswordScreen: React.FC = () => {
           code to reset your password.
         </Text>
 
-        <AppInput
-          placeholder="Enter your email address"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          containerStyle={{ width: "100%" }}
-          leftIcon={
-            <Image
-              source={require("../../../../../assets/icons/mail.png")}
-              style={styles.icon}
-              resizeMode="contain"
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { value, onChange } }) => (
+            <AppInput
+              placeholder="Enter your email address"
+              value={value}
+              onChangeText={onChange}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              containerStyle={{ width: "100%" }}
+              leftIcon={
+                <Image
+                  source={require("../../../../../assets/icons/mail.png")}
+                  style={styles.icon}
+                  resizeMode="contain"
+                />
+              }
+              error={formState.errors.email?.message}
             />
-          }
+          )}
         />
 
         <AppButton
-          label="Send Verification Code"
-          onPress={handleSendVerificationCode}
+          label={
+            formState.isSubmitting ? "Sending..." : "Send Verification Code"
+          }
+          onPress={handleSubmit(handleSendVerificationCode)}
           variant="primary"
           fullWidth
           style={styles.sendButton}
+          disabled={formState.isSubmitting}
         />
       </View>
 

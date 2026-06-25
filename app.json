@@ -29,5 +29,7 @@
     "plugins": [
       "@react-native-community/datetimepicker"
     ]
+    ,
+    "scheme": "barangay"
   }
 }

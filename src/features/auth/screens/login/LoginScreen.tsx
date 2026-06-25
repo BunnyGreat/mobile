@@ -1,19 +1,68 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
+import React from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Alert,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppInput from "../../../../components/ui/AppInput";
 import AppButton from "../../../../components/ui/AppButton";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
+import { loginSchema, type LoginFormValues } from "./schema/login.schema";
+import { loginUser } from "./services/login.service";
+import { useLoginStore } from "./store/login.store";
 
 const LoginScreen: React.FC = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const navigation = useNavigation<RootStackNavigationProp>();
 
-  const handleLoginPress = () => {
-    console.log("Login pressed");
+  const setUser = useLoginStore((s) => s.setUser);
+  const isLoading = useLoginStore((s) => s.isLoading);
+  const setLoading = useLoginStore((s) => s.setLoading);
+
+  const { control, handleSubmit, formState } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  const onSubmit = async (values: LoginFormValues) => {
+    if (isLoading) return;
+    setLoading(true);
+
+    try {
+      const result = await loginUser(values.email.trim(), values.password);
+
+      if (!result.success) {
+        Alert.alert("Login Failed", result.error ?? "Unable to login.");
+        return;
+      }
+
+      if (result.user) {
+        // Only store allowed fields
+        setUser(result.user);
+
+        if (result.user.status === "approved") {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Onboarding" }],
+          });
+        } else {
+          // Service should return errors for pending/rejected, but handle defensively
+          Alert.alert("Login Failed", "Your account is not approved.");
+        }
+      }
+    } catch (error: unknown) {
+      const message = (error as Error)?.message ?? "Login failed.";
+      Alert.alert("Login Failed", message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,20 +86,27 @@ const LoginScreen: React.FC = () => {
           Sign in to continue to Barangay San Isidro.
         </Text>
 
-        <AppInput
-          label="Email Address"
-          placeholder="resident@example.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          leftIcon={
-            <Image
-              source={require("../../../../../assets/icons/mail.png")}
-              style={styles.icon}
-              resizeMode="contain"
+        <Controller
+          control={control}
+          name="email"
+          render={({ field: { value, onChange } }) => (
+            <AppInput
+              label="Email Address"
+              placeholder="resident@example.com"
+              value={value}
+              onChangeText={onChange}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              leftIcon={
+                <Image
+                  source={require("../../../../../assets/icons/mail.png")}
+                  style={styles.icon}
+                  resizeMode="contain"
+                />
+              }
+              error={formState.errors.email?.message}
             />
-          }
+          )}
         />
 
         <View style={styles.passwordLabelRow}>
@@ -62,43 +118,51 @@ const LoginScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        <AppInput
-          label=""
-          placeholder="••••••••"
-          value={password}
-          onChangeText={setPassword}
-          isPassword
-          leftIcon={
-            <Image
-              source={require("../../../../../assets/icons/lock.png")}
-              style={styles.icon}
-              resizeMode="contain"
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { value, onChange } }) => (
+            <AppInput
+              label=""
+              placeholder="••••••••"
+              value={value}
+              onChangeText={onChange}
+              isPassword
+              leftIcon={
+                <Image
+                  source={require("../../../../../assets/icons/lock.png")}
+                  style={styles.icon}
+                  resizeMode="contain"
+                />
+              }
+              passwordToggleIcons={{
+                visible: (
+                  <Image
+                    source={require("../../../../../assets/icons/eye-open.png")}
+                    style={styles.icon}
+                    resizeMode="contain"
+                  />
+                ),
+                hidden: (
+                  <Image
+                    source={require("../../../../../assets/icons/eye-slash.png")}
+                    style={styles.icon}
+                    resizeMode="contain"
+                  />
+                ),
+              }}
+              error={formState.errors.password?.message}
             />
-          }
-          passwordToggleIcons={{
-            visible: (
-              <Image
-                source={require("../../../../../assets/icons/eye-open.png")}
-                style={styles.icon}
-                resizeMode="contain"
-              />
-            ),
-            hidden: (
-              <Image
-                source={require("../../../../../assets/icons/eye-slash.png")}
-                style={styles.icon}
-                resizeMode="contain"
-              />
-            ),
-          }}
+          )}
         />
 
         <AppButton
-          label="Login"
-          onPress={handleLoginPress}
+          label={isLoading ? "Signing In..." : "Login"}
+          onPress={handleSubmit(onSubmit)}
           variant="primary"
           fullWidth
           style={styles.loginButton}
+          disabled={isLoading}
         />
       </View>
 

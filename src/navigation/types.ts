@@ -13,6 +13,7 @@ export type RootStackParamList = {
   ResidenceInformation: undefined;
   UploadIdentification: undefined;
   RegistrationSuccess: undefined;
+  
 };
 
 export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;

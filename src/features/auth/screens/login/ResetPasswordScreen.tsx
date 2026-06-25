@@ -4,20 +4,57 @@
  */
 
 import React, { useMemo, useState } from "react";
-import { View, Text, StyleSheet, Image } from "react-native";
+import { View, Text, StyleSheet, Image, Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppInput from "../../../../components/ui/AppInput";
 import AppButton from "../../../../components/ui/AppButton";
-import ConfirmDialog from "../../../../components/common/ConfirmDialog";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+// ConfirmDialog removed; using Alert for success messages
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
+import { useLoginStore } from "./store/login.store";
+import { auth } from "../../../../services/firebase/firebase";
+import { confirmPasswordReset } from "firebase/auth";
+import { useRoute } from "@react-navigation/native";
+
+const passwordSchema = z
+  .object({
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(/[A-Z]/, "Password must contain an uppercase letter")
+      .regex(/[a-z]/, "Password must contain a lowercase letter")
+      .regex(/[0-9]/, "Password must contain a number"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "Passwords must match",
+  });
+
+type FormValues = z.infer<typeof passwordSchema>;
 
 const ResetPasswordScreen: React.FC = () => {
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const navigation = useNavigation<RootStackNavigationProp>();
+  // success dialog state removed; using Alert for confirmation
+  const forgotEmail = useLoginStore((s) => s.forgotPasswordEmail);
+  const storedOtp = useLoginStore((s) => s.resetOtp);
+  const route: any = useRoute();
+  const oobCode: string | undefined = route?.params?.oobCode;
+
+  const { control, handleSubmit, formState, watch } = useForm<FormValues>({
+    resolver: zodResolver(passwordSchema),
+    mode: "onChange",
+    defaultValues: { password: "", confirmPassword: "" },
+  });
+
+  const passwordValue = watch("password");
+  const confirmValue = watch("confirmPassword");
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const getPasswordStrength = (pwd: string) => {
     let score = 0;
@@ -34,8 +71,8 @@ const ResetPasswordScreen: React.FC = () => {
   };
 
   const passwordStrength = useMemo(
-    () => getPasswordStrength(password),
-    [password],
+    () => getPasswordStrength(passwordValue ?? ""),
+    [passwordValue],
   );
 
   const requirements = useMemo(
@@ -43,39 +80,73 @@ const ResetPasswordScreen: React.FC = () => {
       {
         id: "length",
         label: "At least 8 characters",
-        valid: password.length >= 8,
+        valid: (passwordValue ?? "").length >= 8,
       },
       {
         id: "uppercase",
         label: "One uppercase letter",
-        valid: /[A-Z]/.test(password),
+        valid: /[A-Z]/.test(passwordValue ?? ""),
       },
       {
         id: "lowercase",
         label: "One lowercase letter",
-        valid: /[a-z]/.test(password),
+        valid: /[a-z]/.test(passwordValue ?? ""),
       },
-      { id: "number", label: "One number", valid: /[0-9]/.test(password) },
+      {
+        id: "number",
+        label: "One number",
+        valid: /[0-9]/.test(passwordValue ?? ""),
+      },
       {
         id: "special",
         label: "One special character",
-        valid: /[^a-zA-Z0-9]/.test(password),
+        valid: /[^a-zA-Z0-9]/.test(passwordValue ?? ""),
       },
     ],
-    [password],
+    [passwordValue],
   );
 
-  const passwordsMatch =
-    confirmPassword.length > 0 && password === confirmPassword;
+  const passwordsMatch = false; // kept for UI parity; validation handled by form
 
-  const handleResetPress = () => {
-    // UI-only: show success dialog
-    setShowSuccessDialog(true);
-  };
+  const onSubmit = async (values: FormValues) => {
+    if (isLoading) return;
+    setIsLoading(true);
 
-  const handleDialogConfirm = () => {
-    setShowSuccessDialog(false);
-    navigation.navigate("Login");
+    if (!oobCode) {
+      Alert.alert("Error", "Invalid or missing reset link.");
+      setIsLoading(false);
+      navigation.navigate("ForgotPassword");
+      return;
+    }
+
+    try {
+      await confirmPasswordReset(auth, oobCode, values.password);
+      useLoginStore.getState().clearResetFlow();
+      Alert.alert("Success", "Password successfully updated.", [
+        { text: "OK", onPress: () => navigation.navigate("Login") },
+      ]);
+    } catch (err: unknown) {
+      const e: any = err;
+      const code: string = e?.code ?? e?.message ?? "unknown";
+      if (code.includes("expired-action-code") || code.includes("expired")) {
+        Alert.alert("Error", "The reset link has expired. Request a new one.");
+        useLoginStore.getState().clearResetFlow();
+        navigation.navigate("ForgotPassword");
+      } else if (
+        code.includes("invalid-action-code") ||
+        code.includes("invalid")
+      ) {
+        Alert.alert("Error", "Invalid reset link. Please request a new one.");
+        useLoginStore.getState().clearResetFlow();
+        navigation.navigate("ForgotPassword");
+      } else if (code.includes("weak-password") || code.includes("weak")) {
+        Alert.alert("Error", "Password is too weak.");
+      } else {
+        Alert.alert("Error", "Unable to update password.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -91,30 +162,38 @@ const ResetPasswordScreen: React.FC = () => {
           Create a strong password to secure your account.
         </Text>
 
-        <AppInput
-          label="New Password"
-          placeholder="••••••••"
-          value={password}
-          onChangeText={setPassword}
-          isPassword
-          leftIcon={
-            <Image source={require("../../../../../assets/icons/lock.png")} />
-          }
-          passwordToggleIcons={{
-            visible: (
-              <Image
-                source={require("../../../../../assets/icons/eye-slash.png")}
-              />
-            ),
-            hidden: (
-              <Image
-                source={require("../../../../../assets/icons/eye-open.png")}
-              />
-            ),
-          }}
+        <Controller
+          control={control}
+          name="password"
+          render={({ field: { value, onChange } }) => (
+            <AppInput
+              label="New Password"
+              placeholder="••••••••"
+              value={value}
+              onChangeText={onChange}
+              isPassword
+              leftIcon={
+                <Image
+                  source={require("../../../../../assets/icons/lock.png")}
+                />
+              }
+              passwordToggleIcons={{
+                visible: (
+                  <Image
+                    source={require("../../../../../assets/icons/eye-slash.png")}
+                  />
+                ),
+                hidden: (
+                  <Image
+                    source={require("../../../../../assets/icons/eye-open.png")}
+                  />
+                ),
+              }}
+            />
+          )}
         />
 
-        {password.length > 0 && (
+        {passwordValue && passwordValue.length > 0 && (
           <View style={styles.strengthCard}>
             <View style={styles.strengthHeader}>
               <Text style={styles.strengthLabel}>Security Strength</Text>
@@ -169,47 +248,59 @@ const ResetPasswordScreen: React.FC = () => {
           </View>
         )}
 
-        <AppInput
-          label="Confirm Password"
-          placeholder="••••••••"
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          isPassword
-          leftIcon={
-            <Image source={require("../../../../../assets/icons/lock.png")} />
-          }
-          passwordToggleIcons={{
-            visible: (
-              <Image
-                source={require("../../../../../assets/icons/eye-slash.png")}
-              />
-            ),
-            hidden: (
-              <Image
-                source={require("../../../../../assets/icons/eye-open.png")}
-              />
-            ),
-          }}
+        <Controller
+          control={control}
+          name="confirmPassword"
+          render={({ field: { value, onChange } }) => (
+            <AppInput
+              label="Confirm Password"
+              placeholder="••••••••"
+              value={value}
+              onChangeText={onChange}
+              isPassword
+              leftIcon={
+                <Image
+                  source={require("../../../../../assets/icons/lock.png")}
+                />
+              }
+              passwordToggleIcons={{
+                visible: (
+                  <Image
+                    source={require("../../../../../assets/icons/eye-slash.png")}
+                  />
+                ),
+                hidden: (
+                  <Image
+                    source={require("../../../../../assets/icons/eye-open.png")}
+                  />
+                ),
+              }}
+            />
+          )}
         />
 
-        {(passwordsMatch ||
-          (confirmPassword.length > 0 && !passwordsMatch)) && (
+        {confirmValue && confirmValue.length > 0 ? (
           <Text
             style={[
               styles.matchText,
-              passwordsMatch ? styles.matchSuccess : styles.matchError,
+              confirmValue === passwordValue
+                ? styles.matchSuccess
+                : styles.matchError,
             ]}
           >
-            {passwordsMatch ? "Passwords match" : "Passwords do not match"}
+            {confirmValue === passwordValue
+              ? "Passwords match"
+              : "Passwords do not match"}
           </Text>
-        )}
+        ) : null}
 
         <AppButton
-          label="Reset Password"
-          onPress={handleResetPress}
+          label={isLoading ? "Updating..." : "Reset Password"}
+          onPress={handleSubmit(onSubmit)}
           variant="primary"
           fullWidth
           style={styles.resetButton}
+          disabled={isLoading || !formState.isValid}
         />
       </View>
 
@@ -217,15 +308,7 @@ const ResetPasswordScreen: React.FC = () => {
         Use a strong password that is unique to your account for better
         security.
       </Text>
-
-      <ConfirmDialog
-        visible={showSuccessDialog}
-        title="Password Updated"
-        message="Your password has been successfully updated."
-        onCancel={() => setShowSuccessDialog(false)}
-        onConfirm={handleDialogConfirm}
-        confirmText="OK"
-      />
+      {/* Success handled by Alert and navigation */}
     </ScreenContainer>
   );
 };
