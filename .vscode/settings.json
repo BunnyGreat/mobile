@@ -12,6 +12,7 @@
         "/^powershell -NoProfile -Command \"Get-ChildItem node_modules\\\\react-native-vector-icons\\\\dist -Name \\| Select-String 'Feather' -SimpleMatch\"$/": {
             "approve": true,
             "matchCommandLine": true
-        }
+        },
+        "npx tscx": true
     }
 }

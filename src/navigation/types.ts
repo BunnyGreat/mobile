@@ -21,6 +21,7 @@ export type RootStackParamList = {
   ResidenceInformation: undefined;
   UploadIdentification: undefined;
   RegistrationSuccess: undefined;
+  ProfileScreen: undefined;
   MainTabs: undefined;
 };
 
