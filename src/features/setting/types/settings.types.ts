@@ -19,4 +19,5 @@ export type SettingsItemProps = {
 	value?: string | number;
 	onPress?: () => void;
 	rightComponent?: React.ReactNode;
+	showDivider?: boolean;
 };

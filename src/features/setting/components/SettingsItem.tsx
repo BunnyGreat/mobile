@@ -10,28 +10,31 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
   value,
   onPress,
   rightComponent,
+  showDivider = true,
 }) => {
+  const isInteractive = !!onPress;
+
   return (
     <TouchableOpacity
-      activeOpacity={0.7}
+      activeOpacity={isInteractive ? 0.7 : 1}
       onPress={onPress}
-      style={styles.container}
+      disabled={!isInteractive}
+      style={[styles.container, !showDivider && styles.noDivider]}
     >
-      <View style={styles.left}>
-        <Feather name={icon as any} size={18} color={COLORS.primary} />
+      <View style={styles.iconContainer}>
+        <Feather name={icon as any} size={20} color={COLORS.primary} />
+      </View>
+
+      <View style={styles.content}>
         <Text style={styles.label}>{label}</Text>
+        {value && <Text style={styles.value}>{value}</Text>}
       </View>
 
       <View style={styles.right}>
-        {value !== undefined && <Text style={styles.value}>{value}</Text>}
         {rightComponent}
-        {onPress ? (
-          <Feather
-            name="chevron-right"
-            size={18}
-            color={COLORS.placeholder || "#9AA7B2"}
-          />
-        ) : null}
+        {isInteractive && (
+          <Feather name="chevron-right" size={20} color={COLORS.border} />
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -39,35 +42,45 @@ const SettingsItem: React.FC<SettingsItemProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: SPACING.md,
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: SPACING.md,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    paddingHorizontal: SPACING.md,
+    backgroundColor: COLORS.white,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.04)",
+    borderBottomColor: COLORS.border,
   },
-  left: {
-    flexDirection: "row",
+  noDivider: {
+    borderBottomWidth: 0,
+  },
+  iconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: `${COLORS.primary}10`,
+    justifyContent: "center",
     alignItems: "center",
-    gap: SPACING.sm,
+    marginRight: SPACING.md,
+  },
+  content: {
+    flex: 1,
+    justifyContent: "center",
   },
   label: {
-    marginLeft: SPACING.sm,
     fontFamily: FONT_FAMILY.medium,
-    fontSize: FONT_SIZE.h16,
+    fontSize: FONT_SIZE.body16,
     color: COLORS.heading,
+  },
+  value: {
+    fontFamily: FONT_FAMILY.regular,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.paragraph,
+    marginTop: 2,
   },
   right: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.sm,
-  },
-  value: {
-    marginRight: SPACING.xs,
-    color: COLORS.placeholder || "#64748B",
-    fontFamily: FONT_FAMILY.medium,
-    fontSize: FONT_SIZE.body14,
+    marginLeft: SPACING.sm,
   },
 });
 

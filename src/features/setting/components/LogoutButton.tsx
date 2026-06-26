@@ -1,5 +1,6 @@
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator, View } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 
 const LogoutButton: React.FC<{
@@ -11,31 +12,47 @@ const LogoutButton: React.FC<{
       activeOpacity={0.8}
       onPress={onPress}
       disabled={disabled}
-      style={[styles.button, disabled && styles.disabledButton]}
+      style={styles.button}
     >
-      <Text style={styles.label}>Logout</Text>
+      {disabled ? (
+        <ActivityIndicator size="small" color={COLORS.danger} />
+      ) : (
+        <>
+          <View style={styles.iconWrapper}>
+            <Feather name="log-out" size={18} color={COLORS.danger} />
+          </View>
+          <Text style={styles.label}>Logout</Text>
+        </>
+      )}
     </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: COLORS.danger || "#D9534F",
-    width: "100%",
-    paddingVertical: SPACING.md,
-    borderRadius: 10,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: SPACING.md,
-    marginBottom: SPACING.lg,
+    backgroundColor: COLORS.white,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: `${COLORS.danger}40`,
   },
-  disabledButton: {
-    opacity: 0.65,
+  iconWrapper: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: `${COLORS.danger}10`,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: SPACING.sm,
   },
   label: {
-    color: COLORS.white || "#fff",
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body16,
+    color: COLORS.danger,
   },
 });
 

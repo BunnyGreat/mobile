@@ -1,26 +1,29 @@
 import React from "react";
-import { View, Switch, StyleSheet } from "react-native";
-import { SPACING, COLORS } from "../../../theme";
+import { Switch, StyleSheet } from "react-native";
+import { COLORS } from "../../../theme";
 
 const SettingsToggle: React.FC<{
   enabled: boolean;
   onChange: (value: boolean) => void;
 }> = ({ enabled, onChange }) => {
   return (
-    <View style={styles.container}>
-      <Switch
-        value={enabled}
-        onValueChange={onChange}
-        trackColor={{ false: "#ccc", true: COLORS.primary }}
-        thumbColor="#fff"
-      />
-    </View>
+    <Switch
+      value={enabled}
+      onValueChange={onChange}
+      trackColor={{
+        false: COLORS.border,
+        true: `${COLORS.primary}90`
+      }}
+      thumbColor={enabled ? COLORS.primary : COLORS.white}
+      ios_backgroundColor={COLORS.border}
+      style={styles.switch}
+    />
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    paddingRight: SPACING.md,
+  switch: {
+    transform: [{ scaleX: 0.95 }, { scaleY: 0.95 }],
   },
 });
 

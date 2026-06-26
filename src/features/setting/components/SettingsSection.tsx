@@ -2,37 +2,41 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { SPACING, FONT_FAMILY, FONT_SIZE, COLORS } from "../../../theme";
 
-type Props = {
+type SettingsSectionProps = {
   title: string;
   children: React.ReactNode;
 };
 
-const SettingsSection: React.FC<Props> = ({ title, children }) => {
+const SettingsSection: React.FC<SettingsSectionProps> = ({ title, children }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{title}</Text>
-      <View style={styles.body}>{children}</View>
+      <View style={styles.card}>{children}</View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: SPACING.md,
+    marginBottom: SPACING.lg,
   },
   title: {
-    color: COLORS.placeholder || "#637381",
     fontFamily: FONT_FAMILY.semibold,
-    fontSize: FONT_SIZE.h16,
-    marginBottom: SPACING.xs,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.paragraph,
+    marginBottom: SPACING.sm,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
-  body: {
-    borderWidth: 1,
-    borderColor: "rgba(193,198,213,0.2)",
+  card: {
+    backgroundColor: COLORS.white,
     borderRadius: 16,
     overflow: "hidden",
-    width: "100%",
-    backgroundColor: COLORS.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
 });
 
