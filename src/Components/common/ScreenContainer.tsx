@@ -22,7 +22,8 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({
   ...scrollViewProps
 }) => {
   const contentStyle: ViewStyle = {
-    flex: flex ? 1 : undefined,
+    flex: scrollable ? undefined : flex ? 1 : undefined,
+    minHeight: scrollable ? "100%" : undefined,
     backgroundColor,
     padding: typeof padding === "string" ? SPACING[padding] : padding,
     ...containerStyle,

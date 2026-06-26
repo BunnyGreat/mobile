@@ -15,6 +15,7 @@ import UploadIdentificationScreen from "../features/auth/screens/register/Upload
 import RegistrationSuccessScreen from "../features/auth/screens/register/RegistrationSuccessScreen";
 import ProfileScreens from "../features/profile/screens/ProfileScreens";
 import EditProfileScreen from "../features/profile/screens/EditProfileScreen";
+import ChangePasswordScreen from "../features/setting/screens/ChangePasswordScreen";
 import MainTabNavigator from "./MainTabNavigator";
 import { RootStackParamList } from "./types";
 
@@ -58,6 +59,10 @@ export const RootNavigator: React.FC = () => {
       />
       <Stack.Screen name="ProfileScreen" component={ProfileScreens} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen
+        name="ChangePasswordScreen"
+        component={ChangePasswordScreen}
+      />
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
     </Stack.Navigator>
   );

@@ -168,9 +168,7 @@ const SettingScreen: React.FC = () => {
                 icon="lock"
                 label="Change Password"
                 showDivider={false}
-                onPress={() =>
-                  navigation.navigate("ChangePasswordScreen" as never)
-                }
+                onPress={() => navigation.navigate("ChangePasswordScreen")}
               />
             </View>
           </View>

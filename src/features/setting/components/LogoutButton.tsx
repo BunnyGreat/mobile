@@ -8,23 +8,29 @@ const LogoutButton: React.FC<{
   disabled?: boolean;
 }> = ({ onPress, disabled = false }) => {
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
-      onPress={onPress}
-      disabled={disabled}
-      style={styles.button}
-    >
-      {disabled ? (
-        <ActivityIndicator size="small" color={COLORS.danger} />
-      ) : (
-        <>
-          <View style={styles.iconWrapper}>
-            <Feather name="log-out" size={18} color={COLORS.danger} />
-          </View>
-          <Text style={styles.label}>Logout</Text>
-        </>
-      )}
-    </TouchableOpacity>
+    <>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={onPress}
+        disabled={disabled}
+        style={styles.button}
+      >
+        {disabled ? (
+          <ActivityIndicator size="small" color={COLORS.danger} />
+        ) : (
+          <>
+            <View style={styles.iconWrapper}>
+              <Feather name="log-out" size={18} color={COLORS.danger} />
+            </View>
+            <Text style={styles.label}>Logout</Text>
+          </>
+        )}
+      </TouchableOpacity>
+
+      <Text style={styles.copyright}>
+        © 2026 Barangay San Isidro, Rodriguez, Rizal
+      </Text>
+    </>
   );
 };
 
@@ -53,6 +59,14 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body16,
     color: COLORS.danger,
+  },
+  copyright: {
+    fontFamily: FONT_FAMILY.regular,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.placeholder,
+    textAlign: "center",
+    marginTop: SPACING.lg,
+    marginBottom: SPACING.md,
   },
 });
 

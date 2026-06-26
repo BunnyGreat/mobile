@@ -23,6 +23,7 @@ export type RootStackParamList = {
   RegistrationSuccess: undefined;
   ProfileScreen: undefined;
   EditProfile: undefined;
+  ChangePasswordScreen: undefined;
   MainTabs: undefined;
 };
 
