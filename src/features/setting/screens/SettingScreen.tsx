@@ -78,7 +78,7 @@ const SettingScreen: React.FC = () => {
           fullName={profile?.fullName}
           referenceId={profile?.referenceId}
           status={profile?.status}
-          onPress={() => navigation.navigate("ProfileScreen" as never)}
+          onPress={() => navigation.navigate("ProfileScreen")}
         />
         {error ? (
           <View style={styles.errorContainer}>
@@ -90,7 +90,7 @@ const SettingScreen: React.FC = () => {
           <SettingsItem
             icon="user"
             label="Profile Information"
-            onPress={() => navigation.navigate("ProfileScreen" as never)}
+            onPress={() => navigation.navigate("ProfileScreen")}
           />
           <SettingsItem
             icon="lock"

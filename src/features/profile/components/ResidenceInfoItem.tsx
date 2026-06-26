@@ -1,5 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, View, ViewStyle } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 
 interface ResidenceInfoItemProps {
@@ -17,11 +18,21 @@ const ResidenceInfoItem: React.FC<ResidenceInfoItemProps> = ({
 }) => {
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.rowContent}>
-        <View style={styles.iconWrapper}>{icon}</View>
-        <View style={styles.textContent}>
+      {/* Header with Icon */}
+      <View style={styles.header}>
+        <View style={styles.iconBadge}>
+          {icon}
+        </View>
+        <View style={styles.labelBadge}>
           <Text style={styles.label}>{label}</Text>
-          <Text style={styles.value}>{value}</Text>
+        </View>
+      </View>
+
+      {/* Address Value */}
+      <View style={styles.valueRow}>
+        <View style={styles.valueContainer}>
+          <Feather name="map-pin" size={18} color={COLORS.primary} />
+          <Text style={styles.valueText}>{value}</Text>
         </View>
       </View>
     </View>
@@ -32,34 +43,50 @@ const styles = StyleSheet.create({
   container: {
     paddingVertical: SPACING.sm,
   },
-  rowContent: {
+  header: {
     flexDirection: "row",
-    alignItems: "flex-start",
-    gap: SPACING.md,
+    alignItems: "center",
+    marginBottom: SPACING.md,
   },
-  iconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+  iconBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary + "12",
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 78, 159, 0.12)",
+    marginRight: SPACING.md,
   },
-  textContent: {
-    flex: 1,
+  labelBadge: {
+    backgroundColor: COLORS.primary + "10",
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: 20,
   },
   label: {
-    textTransform: "uppercase",
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body12,
-    color: COLORS.placeholder,
-    marginBottom: SPACING.xs,
+    color: COLORS.primary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  value: {
+  valueRow: {
+    marginLeft: SPACING.xxl + SPACING.md,
+  },
+  valueContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: 12,
+    padding: SPACING.md,
+  },
+  valueText: {
+    flex: 1,
     fontFamily: FONT_FAMILY.medium,
     fontSize: FONT_SIZE.body16,
     color: COLORS.heading,
     lineHeight: 24,
+    marginLeft: SPACING.sm,
   },
 });
 

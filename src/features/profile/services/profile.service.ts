@@ -21,9 +21,13 @@ const mapResidentStatus = (status?: string): string => {
 };
 
 const formatFullName = (personalInformation: ProfilePersonalInformation): string => {
+  const middleInitial = personalInformation.middleName
+    ? `${personalInformation.middleName.trim().charAt(0).toUpperCase()}.`
+    : null;
+
   return [
     personalInformation.firstName,
-    personalInformation.middleName ? `${personalInformation.middleName}.` : null,
+    middleInitial,
     personalInformation.lastName,
     personalInformation.suffix,
   ]

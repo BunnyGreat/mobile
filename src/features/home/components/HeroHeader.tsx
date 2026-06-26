@@ -1,5 +1,7 @@
 import React from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Text, Image, StyleSheet, TouchableOpacity } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { RootStackNavigationProp } from "../../../navigation/types";
 import { useLoginStore } from "../../auth/screens/login/store/login.store";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 
@@ -8,6 +10,7 @@ const profilePlaceholder = require("../../../../assets/icons/no-photo.png");
 const verifiedIcon = require("../../../../assets/icons/fiesta-check.png");
 
 const HeroHeader: React.FC = () => {
+  const navigation = useNavigation<RootStackNavigationProp>();
   const user = useLoginStore((s) => s.user);
 
   const firstName = user?.personalInformation?.firstName ?? "";
@@ -44,7 +47,11 @@ const HeroHeader: React.FC = () => {
         </View>
       </View>
 
-      <View style={styles.avatarWrapper}>
+      <TouchableOpacity
+        style={styles.avatarWrapper}
+        onPress={() => navigation.navigate("ProfileScreen")}
+        activeOpacity={0.8}
+      >
         <Image
           source={
             profilePhotoUrl ? { uri: profilePhotoUrl } : profilePlaceholder
@@ -52,7 +59,7 @@ const HeroHeader: React.FC = () => {
           style={styles.avatar}
           resizeMode="cover"
         />
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };
