@@ -4,6 +4,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
+import type { RootStackNavigationProp } from "../../../navigation/types";
 
 const placeholderImage = require("../../../../assets/icons/no-photo.png");
 const verifiedIcon = require("../../../../assets/icons/fiesta-check.png");
@@ -21,7 +22,7 @@ const ProfileHeaderCard: React.FC<Props> = ({
   residentStatus,
   profilePhotoUrl,
 }) => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<RootStackNavigationProp>();
 
   return (
     <View style={styles.container}>
@@ -52,7 +53,7 @@ const ProfileHeaderCard: React.FC<Props> = ({
 
         <TouchableOpacity
           style={styles.menuButton}
-          onPress={() => {}}
+          onPress={() => navigation.navigate("EditProfile")}
           activeOpacity={0.7}
         >
           <Feather name="edit-3" size={22} color={COLORS.white} />

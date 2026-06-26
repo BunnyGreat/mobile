@@ -18,5 +18,35 @@ export const useProfileStore = create<ProfileStore>((set) => ({
       set({ loading: false, error: message, profile: null });
     }
   },
+  refreshProfile: async () => {
+    set({ loading: true, error: null });
+
+    try {
+      const profile = await getProfile();
+      set({ profile, loading: false, error: null });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unable to refresh profile.";
+      console.error("[PROFILE]", error);
+      set({ loading: false, error: message });
+    }
+  },
+  updateProfile: (profile: Profile) => set({ profile }),
+  updateProfilePhoto: (profilePhotoUrl: string | null) =>
+    set((state) => {
+      if (!state.profile) {
+        return state;
+      }
+
+      return {
+        profile: {
+          ...state.profile,
+          profilePhotoUrl,
+          personalInformation: {
+            ...state.profile.personalInformation,
+            profilePhotoUrl,
+          },
+        },
+      };
+    }),
   clearProfile: () => set({ profile: null, loading: false, error: null }),
 }));

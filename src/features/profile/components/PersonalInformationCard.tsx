@@ -51,10 +51,8 @@ const PersonalInformationCard: React.FC<PersonalInformationCardProps> = ({
     contactNumber,
   } = personalInformation;
 
-  const middleInitial = middleName
-    ? `${middleName.trim().charAt(0).toUpperCase()}.`
-    : null;
-  const fullName = [firstName, middleInitial, lastName, suffix]
+  const safeTrim = (value?: string | null): string => (value ?? "").trim();
+  const fullName = [firstName, safeTrim(middleName), lastName, safeTrim(suffix)]
     .filter(Boolean)
     .join(" ");
 

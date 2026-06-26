@@ -9,7 +9,9 @@ export interface ProfilePersonalInformation {
   gender: "male" | "female" | "other";
   civilStatus: "single" | "married" | "widowed" | "separated" | "divorced";
   contactNumber: string;
+  profilePhotoUri?: string | null;
   profilePhotoUrl?: string | null;
+  profilePhotoPath?: string | null;
 }
 
 export interface ProfileResidenceInformation {
@@ -34,6 +36,8 @@ export interface Profile {
   referenceId: string;
   residentStatus: ResidentStatus;
   profilePhotoUrl?: string | null;
+  profilePhotoPath?: string | null;
+  updatedAt?: string | null;
   personalInformation: ProfilePersonalInformation;
   residenceInformation: ProfileResidenceInformation;
   documents: ProfileDocuments;
@@ -44,5 +48,8 @@ export interface ProfileStore {
   loading: boolean;
   error: string | null;
   loadProfile: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
+  updateProfile: (profile: Profile) => void;
+  updateProfilePhoto: (profilePhotoUrl: string | null) => void;
   clearProfile: () => void;
 }
