@@ -1,5 +1,5 @@
 import React from "react";
-import { View, StyleSheet, Animated } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { COLORS, SPACING, SHADOWS } from "../../../theme";
 
 const SkeletonBlock: React.FC<{ style?: object }> = ({ style }) => (
@@ -10,25 +10,25 @@ const SkeletonBlock: React.FC<{ style?: object }> = ({ style }) => (
 
 export const StatusSkeleton: React.FC = () => (
   <View style={styles.card}>
-    <View style={styles.content}>
-      {/* Type Badge */}
-      <View style={styles.typeRow}>
-        <SkeletonBlock style={styles.typeBadge} />
-        <SkeletonBlock style={styles.reference} />
+    {/* Card Header */}
+    <View style={styles.header}>
+      <View style={styles.headerLeft}>
+        <SkeletonBlock style={styles.iconContainer} />
+        <View style={styles.headerInfo}>
+          <SkeletonBlock style={styles.requestType} />
+          <SkeletonBlock style={styles.reference} />
+        </View>
       </View>
+      <SkeletonBlock style={styles.statusPill} />
+    </View>
 
-      {/* Title */}
+    {/* Card Body */}
+    <View style={styles.body}>
       <SkeletonBlock style={styles.title} />
       <SkeletonBlock style={styles.titleShort} />
 
-      {/* Meta Row */}
       <View style={styles.metaRow}>
-        <SkeletonBlock style={styles.statusBadge} />
-        <SkeletonBlock style={styles.date} />
-      </View>
-
-      {/* Expand Row */}
-      <View style={styles.expandRow}>
+        <SkeletonBlock style={styles.dateBadge} />
         <SkeletonBlock style={styles.expandText} />
       </View>
     </View>
@@ -43,8 +43,72 @@ const styles = StyleSheet.create({
     ...SHADOWS.soft,
     overflow: "hidden",
   },
-  content: {
-    padding: SPACING.lg,
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.md,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+  },
+  headerInfo: {
+    gap: 4,
+  },
+  requestType: {
+    width: 120,
+    height: 14,
+    borderRadius: 4,
+  },
+  reference: {
+    width: 60,
+    height: 12,
+    borderRadius: 4,
+  },
+  statusPill: {
+    width: 90,
+    height: 28,
+    borderRadius: 14,
+  },
+  body: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
+  },
+  title: {
+    width: "100%",
+    height: 20,
+    borderRadius: 4,
+    marginBottom: SPACING.xs,
+  },
+  titleShort: {
+    width: "70%",
+    height: 20,
+    borderRadius: 4,
+    marginBottom: SPACING.md,
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  dateBadge: {
+    width: 80,
+    height: 14,
+    borderRadius: 4,
+  },
+  expandText: {
+    width: 60,
+    height: 16,
+    borderRadius: 4,
   },
   skeleton: {
     backgroundColor: "#F1F5F9",
@@ -55,59 +119,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#E2E8F0",
     opacity: 0.5,
-  },
-  typeRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: SPACING.sm,
-  },
-  typeBadge: {
-    width: 80,
-    height: 16,
-    borderRadius: 4,
-  },
-  reference: {
-    width: 70,
-    height: 14,
-    borderRadius: 4,
-  },
-  title: {
-    width: "100%",
-    height: 20,
-    marginBottom: SPACING.xs,
-  },
-  titleShort: {
-    width: "60%",
-    height: 20,
-    marginBottom: SPACING.md,
-  },
-  metaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: SPACING.md,
-  },
-  statusBadge: {
-    width: 100,
-    height: 28,
-    borderRadius: 14,
-  },
-  date: {
-    width: 80,
-    height: 16,
-    borderRadius: 4,
-  },
-  expandRow: {
-    alignItems: "center",
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  expandText: {
-    width: 100,
-    height: 16,
-    borderRadius: 4,
   },
 });
 

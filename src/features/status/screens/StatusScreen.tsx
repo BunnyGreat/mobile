@@ -5,10 +5,8 @@ import {
   StyleSheet,
   FlatList,
   RefreshControl,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import StatusFilter from "../components/StatusFilter";
 import RequestStatusCard from "../components/RequestStatusCard";
@@ -25,47 +23,37 @@ const StatusScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={["left", "right", "top"]}>
       <View style={styles.container}>
-        {/* Page Title */}
-        <View style={styles.pageHeader}>
-          <Text style={styles.pageTitle}>Request Tracker</Text>
-          <Text style={styles.pageSubtitle}>
-            Track your certificate and appointment requests
-          </Text>
-        </View>
+        <StatusFilter
+          activeFilter={activeFilter}
+          onFilterChange={setActiveFilter}
+        />
 
-        <View style={styles.content}>
-          <StatusFilter
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
+        {loading && requests.length === 0 ? (
+          <View style={styles.skeletonContainer}>
+            {[1, 2].map((i) => (
+              <StatusSkeleton key={i} />
+            ))}
+          </View>
+        ) : requests.length === 0 ? (
+          <EmptyStatus />
+        ) : (
+          <FlatList
+            data={requests}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.listContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={refresh}
+                colors={[COLORS.primary]}
+                tintColor={COLORS.primary}
+              />
+            }
+            renderItem={({ item }) => <RequestStatusCard request={item} />}
+            scrollEnabled={true}
           />
-
-          {loading && requests.length === 0 ? (
-            <View style={styles.loadingContainer}>
-              {[1, 2, 3].map((i) => (
-                <StatusSkeleton key={i} />
-              ))}
-            </View>
-          ) : requests.length === 0 ? (
-            <EmptyStatus />
-          ) : (
-            <FlatList
-              data={requests}
-              keyExtractor={(item) => item.id}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.listContent}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={refresh}
-                  colors={[COLORS.primary]}
-                  tintColor={COLORS.primary}
-                />
-              }
-              renderItem={({ item }) => <RequestStatusCard request={item} />}
-              scrollEnabled={true}
-            />
-          )}
-        </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -80,30 +68,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
-  pageHeader: {
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.md,
-  },
-  pageTitle: {
-    fontFamily: FONT_FAMILY.bold,
-    fontSize: FONT_SIZE.h24,
-    color: COLORS.heading,
-    marginBottom: SPACING.xs,
-  },
-  pageSubtitle: {
-    fontFamily: FONT_FAMILY.regular,
-    fontSize: FONT_SIZE.body14,
-    color: COLORS.paragraph,
-  },
-  content: {
-    flex: 1,
-  },
   listContent: {
     paddingHorizontal: SPACING.lg,
     paddingBottom: SPACING.huge,
   },
-  loadingContainer: {
+  skeletonContainer: {
     paddingHorizontal: SPACING.lg,
   },
 });

@@ -4,36 +4,48 @@ import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import { getStatusIcon } from "../utils/statusIcon";
 import { getStatusLabel } from "../utils/statusLabel";
-import { getStatusColor } from "../utils/statusColor";
 import type { RequestStatus } from "../types/status.types";
 
 interface StatusStepProps {
   status: RequestStatus;
+  description: string;
   stepStatus: "completed" | "current" | "future";
   isLast?: boolean;
+  stepNumber?: number;
 }
 
 export const StatusStep: React.FC<StatusStepProps> = ({
   status,
+  description,
   stepStatus,
   isLast,
+  stepNumber = 1,
 }) => {
-  let circleColor: string;
+  let indicatorColor: string;
   let textColor: string;
+  let descriptionColor: string;
+  let lineColor: string;
   let bgColor: string;
+  let showPulse: boolean = false;
 
   if (stepStatus === "completed") {
-    circleColor = COLORS.success;
+    indicatorColor = COLORS.success;
     textColor = COLORS.heading;
+    descriptionColor = COLORS.paragraph;
+    lineColor = COLORS.success;
     bgColor = COLORS.success + "10";
   } else if (stepStatus === "current") {
-    // Current step: rejected shows as red, others show as green
-    circleColor = status === "rejected" ? COLORS.danger : COLORS.success;
+    indicatorColor = status === "rejected" ? COLORS.danger : COLORS.success;
     textColor = COLORS.heading;
-    bgColor = circleColor + "10";
+    descriptionColor = COLORS.paragraph;
+    lineColor = COLORS.border;
+    bgColor = indicatorColor + "10";
+    showPulse = true;
   } else {
-    circleColor = COLORS.border;
+    indicatorColor = COLORS.border;
     textColor = COLORS.placeholder;
+    descriptionColor = COLORS.placeholder;
+    lineColor = COLORS.border;
     bgColor = COLORS.border;
   }
 
@@ -44,74 +56,82 @@ export const StatusStep: React.FC<StatusStepProps> = ({
       {/* Timeline Line - Top */}
       {!isLast && (
         <View style={styles.lineTopContainer}>
-          <View
-            style={[
-              styles.lineTop,
-              {
-                backgroundColor:
-                  stepStatus === "completed"
-                    ? COLORS.success
-                    : stepStatus === "current" && status === "rejected"
-                      ? COLORS.danger
-                      : COLORS.border,
-              },
-            ]}
-          />
+          <View style={[styles.lineTop, { backgroundColor: lineColor }]} />
         </View>
       )}
 
-      {/* Indicator Dot and Line */}
-      <View style={styles.indicatorContainer}>
+      {/* Indicator Column */}
+      <View style={styles.indicatorColumn}>
+        {/* Outer ring for current step */}
+        {showPulse && (
+          <View
+            style={[styles.pulseRing, { borderColor: indicatorColor + "30" }]}
+          />
+        )}
+
+        {/* Main indicator */}
         <View style={[styles.indicatorDot, { backgroundColor: bgColor }]}>
           <View
             style={[
               styles.circle,
               {
-                backgroundColor: circleColor,
+                backgroundColor: indicatorColor,
                 borderColor:
-                  stepStatus === "future" ? COLORS.border : circleColor,
+                  stepStatus === "future" ? COLORS.border : indicatorColor,
               },
             ]}
           >
             {stepStatus === "completed" ? (
-              <Feather name="check" size={12} color={COLORS.white} />
+              <Feather
+                name="check"
+                size={14}
+                color={COLORS.white}
+                weight="bold"
+              />
             ) : (
-              <Feather name={iconName} size={12} color={COLORS.white} />
+              <Feather name={iconName} size={14} color={COLORS.white} />
             )}
           </View>
         </View>
 
-        {/* Timeline Line - Bottom (only if not last) */}
+        {/* Timeline Line - Bottom */}
         {!isLast && (
           <View style={styles.lineBottomContainer}>
-            <View
-              style={[
-                styles.lineBottom,
-                {
-                  backgroundColor:
-                    stepStatus === "completed"
-                      ? COLORS.success
-                      : stepStatus === "current" && status === "rejected"
-                        ? COLORS.danger
-                        : COLORS.border,
-                },
-              ]}
-            />
+            <View style={[styles.lineBottom, { backgroundColor: lineColor }]} />
           </View>
         )}
       </View>
 
-      {/* Step Content */}
-      <View style={styles.contentContainer}>
-        <Text style={[styles.label, { color: textColor }]}>
-          {getStatusLabel(status)}
+      {/* Content Column */}
+      <View style={styles.contentColumn}>
+        <View style={styles.contentHeader}>
+          <Text style={[styles.stepTitle, { color: textColor }]}>
+            {getStatusLabel(status)}
+          </Text>
+          {stepStatus === "current" && (
+            <View
+              style={[
+                styles.currentBadge,
+                { backgroundColor: indicatorColor + "15" },
+              ]}
+            >
+              <Text
+                style={[styles.currentBadgeText, { color: indicatorColor }]}
+              >
+                Current
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <Text style={[styles.description, { color: descriptionColor }]}>
+          {description}
         </Text>
-        {stepStatus === "current" && (
-          <Text style={styles.currentBadge}>In Progress</Text>
-        )}
+
         {stepStatus === "completed" && (
-          <View style={styles.completedCheck}>
+          <View style={styles.completedInfo}>
             <Feather name="check-circle" size={12} color={COLORS.success} />
+            <Text style={styles.completedText}>Completed</Text>
           </View>
         )}
       </View>
@@ -127,28 +147,38 @@ const styles = StyleSheet.create({
   lineTopContainer: {
     position: "absolute",
     top: -SPACING.lg,
-    left: 21,
+    left: 19,
     width: 2,
     height: SPACING.lg,
+    zIndex: 1,
   },
   lineTop: {
     width: 2,
     height: "100%",
   },
-  indicatorContainer: {
+  indicatorColumn: {
     alignItems: "center",
+    zIndex: 2,
+  },
+  pulseRing: {
+    position: "absolute",
+    top: -4,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
   },
   indicatorDot: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: "center",
     alignItems: "center",
   },
   circle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
@@ -162,31 +192,48 @@ const styles = StyleSheet.create({
     width: 2,
     height: "100%",
   },
-  contentContainer: {
+  contentColumn: {
     flex: 1,
     marginLeft: SPACING.md,
     paddingTop: SPACING.xs,
     paddingBottom: SPACING.lg,
+  },
+  contentHeader: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    marginBottom: 2,
   },
-  label: {
-    fontFamily: FONT_FAMILY.medium,
+  stepTitle: {
+    fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body14,
+    marginRight: SPACING.sm,
   },
   currentBadge: {
-    fontFamily: FONT_FAMILY.medium,
-    fontSize: FONT_SIZE.body12,
-    color: COLORS.primary,
-    backgroundColor: COLORS.primary + "15",
     paddingHorizontal: SPACING.sm,
     paddingVertical: 2,
     borderRadius: 4,
-    overflow: "hidden",
   },
-  completedCheck: {
-    marginLeft: SPACING.sm,
+  currentBadgeText: {
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  description: {
+    fontFamily: FONT_FAMILY.regular,
+    fontSize: FONT_SIZE.body12,
+    lineHeight: 18,
+  },
+  completedInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: SPACING.sm,
+    gap: SPACING.xs,
+  },
+  completedText: {
+    fontFamily: FONT_FAMILY.medium,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.success,
   },
 });
 

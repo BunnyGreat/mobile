@@ -23,68 +23,72 @@ export const RequestStatusCard: React.FC<RequestStatusCardProps> = ({
 
   return (
     <View style={styles.card}>
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => setExpanded(!expanded)}
-        style={styles.touchable}
-      >
-        {/* Request Type Badge */}
-        <View style={styles.typeRow}>
-          <View style={styles.typeBadge}>
+      {/* Card Header */}
+      <View style={styles.cardHeader}>
+        <View style={styles.headerLeft}>
+          <View style={styles.typeIconContainer}>
             <Feather
               name={request.type === "certificate" ? "file-text" : "calendar"}
-              size={12}
+              size={18}
               color={COLORS.primary}
             />
-            <Text style={styles.typeText}>
-              {request.type === "certificate" ? "Certificate" : "Appointment"}
-            </Text>
           </View>
-          <Text style={styles.referenceLabel}>
-            Ref: {referenceNumber}
+          <View style={styles.headerInfo}>
+            <Text style={styles.requestType}>
+              {request.type === "certificate" ? "Certificate Request" : "Appointment Request"}
+            </Text>
+            <Text style={styles.referenceNumber}>#{referenceNumber}</Text>
+          </View>
+        </View>
+        <View style={[styles.statusPill, { backgroundColor: statusColor + "15" }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          <Text style={[styles.statusText, { color: statusColor }]}>
+            {getStatusLabel(request.status)}
           </Text>
         </View>
+      </View>
 
-        {/* Title */}
+      {/* Card Body */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => setExpanded(!expanded)}
+        style={styles.cardBody}
+      >
         <Text style={styles.title} numberOfLines={2}>
           {request.title}
         </Text>
 
-        {/* Status and Date Row */}
         <View style={styles.metaRow}>
-          <View style={[styles.statusBadge, { backgroundColor: statusColor + "15" }]}>
-            <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-            <Text style={[styles.statusText, { color: statusColor }]}>
-              {getStatusLabel(request.status)}
-            </Text>
-          </View>
-
-          <View style={styles.dateContainer}>
-            <Feather name="clock" size={12} color={COLORS.placeholder} />
-            <Text style={styles.dateText}>
+          <View style={styles.metaItem}>
+            <Feather name="calendar" size={14} color={COLORS.placeholder} />
+            <Text style={styles.metaText}>
               {formatDateShort(request.createdAt)}
             </Text>
           </View>
-        </View>
-
-        {/* Expand Indicator */}
-        <View style={styles.expandRow}>
-          <Text style={styles.expandText}>
-            {expanded ? "Hide Details" : "View Details"}
-          </Text>
-          <Feather
-            name={expanded ? "chevron-up" : "chevron-down"}
-            size={16}
-            color={COLORS.primary}
-          />
+          <View style={styles.expandIndicator}>
+            <Text style={styles.expandText}>
+              {expanded ? "Hide" : "Details"}
+            </Text>
+            <Feather
+              name={expanded ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={COLORS.primary}
+            />
+          </View>
         </View>
       </TouchableOpacity>
 
-      {/* Timeline (always rendered but visibility controlled) */}
-      <View style={[styles.timelineContainer, !expanded && styles.timelineHidden]}>
-        <View style={styles.timelineDivider} />
-        <StatusTimeline request={request} />
-      </View>
+      {/* Timeline Section */}
+      {expanded && (
+        <View style={styles.timelineSection}>
+          <View style={styles.timelineDivider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>TRACKING PROGRESS</Text>
+            <View style={styles.dividerLine} />
+          </View>
+          <StatusTimeline request={request} />
+        </View>
+      )}
     </View>
   );
 };
@@ -97,44 +101,41 @@ const styles = StyleSheet.create({
     ...SHADOWS.soft,
     overflow: "hidden",
   },
-  touchable: {
-    padding: SPACING.lg,
-  },
-  typeRow: {
+  cardHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.lg,
+    paddingBottom: SPACING.md,
   },
-  typeBadge: {
+  headerLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.xs,
+    gap: SPACING.md,
   },
-  typeText: {
-    fontFamily: FONT_FAMILY.medium,
-    fontSize: FONT_SIZE.body12,
-    color: COLORS.primary,
+  typeIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary + "12",
+    justifyContent: "center",
+    alignItems: "center",
   },
-  referenceLabel: {
-    fontFamily: FONT_FAMILY.medium,
+  headerInfo: {
+    gap: 2,
+  },
+  requestType: {
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body14,
+    color: COLORS.heading,
+  },
+  referenceNumber: {
+    fontFamily: FONT_FAMILY.regular,
     fontSize: FONT_SIZE.body12,
     color: COLORS.placeholder,
   },
-  title: {
-    fontFamily: FONT_FAMILY.semibold,
-    fontSize: FONT_SIZE.h16,
-    color: COLORS.heading,
-    marginBottom: SPACING.md,
-    lineHeight: 22,
-  },
-  metaRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: SPACING.md,
-  },
-  statusBadge: {
+  statusPill: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: SPACING.md,
@@ -151,40 +152,63 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body12,
   },
-  dateContainer: {
+  cardBody: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
+  },
+  title: {
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.h16,
+    color: COLORS.heading,
+    marginBottom: SPACING.md,
+    lineHeight: 24,
+  },
+  metaRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: SPACING.xs,
+    gap: SPACING.sm,
   },
-  dateText: {
+  metaText: {
     fontFamily: FONT_FAMILY.regular,
     fontSize: FONT_SIZE.body12,
-    color: COLORS.placeholder,
+    color: COLORS.paragraph,
   },
-  expandRow: {
+  expandIndicator: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: SPACING.xs,
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
   },
   expandText: {
     fontFamily: FONT_FAMILY.medium,
     fontSize: FONT_SIZE.body12,
     color: COLORS.primary,
   },
-  timelineContainer: {
-    overflow: "hidden",
-  },
-  timelineHidden: {
-    display: "none",
+  timelineSection: {
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
   timelineDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    gap: SPACING.md,
+  },
+  dividerLine: {
+    flex: 1,
     height: 1,
     backgroundColor: COLORS.border,
-    marginHorizontal: SPACING.lg,
+  },
+  dividerText: {
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.placeholder,
+    letterSpacing: 0.5,
   },
 });
 
