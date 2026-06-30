@@ -8,7 +8,6 @@ import {
   Alert,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import * as ImageManipulator from "expo-image-manipulator";
 import AppButton from "../../../../../components/ui/AppButton";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../../theme";
 
@@ -27,8 +26,6 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
   const [frontError, setFrontError] = useState("");
   const [backError, setBackError] = useState("");
   const [checkboxError, setCheckboxError] = useState("");
-
-  const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
   const requestGalleryPermission = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -59,30 +56,7 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
     setUri: React.Dispatch<React.SetStateAction<string | null>>,
     setError: React.Dispatch<React.SetStateAction<string>>,
   ) => {
-    const compressedResult = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1200, height: 1200 } }],
-      {
-        compress: 0.7,
-        format: ImageManipulator.SaveFormat.JPEG,
-      },
-    );
-
-    if (!compressedResult.uri) {
-      Alert.alert("Image processing failed.");
-      return;
-    }
-
-    const fileInfo = await fetch(compressedResult.uri);
-    const blob = await fileInfo.blob();
-    const size = blob.size;
-
-    if (size > MAX_FILE_SIZE) {
-      Alert.alert("Image must be 5MB or less.");
-      return;
-    }
-
-    setUri(compressedResult.uri);
+    setUri(uri);
     setError("");
   };
 

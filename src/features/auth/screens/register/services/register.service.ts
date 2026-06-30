@@ -1,5 +1,5 @@
 import { auth, db } from "../../../../../services/firebase/firebase";
-import { supabase } from "../../../../../services/supabase/supabase";
+import { uploadFileToSupabaseStorage } from "../../../../../services/supabase/storageUpload.service";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -17,7 +17,6 @@ import {
   setDoc,
   where,
 } from "firebase/firestore";
-import * as ImageManipulator from "expo-image-manipulator";
 import type {
   RegistrationFormData,
   RegistrationPersonalInformation,
@@ -101,107 +100,28 @@ const getContentType = (extension: string): string => {
   return `image/${normalized}`;
 };
 
-const decodeBase64ToUint8Array = (base64: string): Uint8Array => {
-  const cleaned = base64.replace(/[^A-Za-z0-9+/=]/g, "");
-
-  const globalBuffer = (globalThis as any).Buffer;
-  if (globalBuffer && typeof globalBuffer.from === "function") {
-    return globalBuffer.from(cleaned, "base64");
-  }
-
-  if (typeof globalThis.atob === "function") {
-    const binary = globalThis.atob(cleaned);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i += 1) {
-      bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-  }
-
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
-  const lookup = new Uint8Array(256);
-  for (let i = 0; i < chars.length; i += 1) {
-    lookup[chars.charCodeAt(i)] = i;
-  }
-
-  const bufferLength = cleaned.length * 0.75 - (cleaned.endsWith("==") ? 2 : cleaned.endsWith("=") ? 1 : 0);
-  const bytes = new Uint8Array(bufferLength);
-
-  let p = 0;
-  for (let i = 0; i < cleaned.length; i += 4) {
-    const encoded1 = lookup[cleaned.charCodeAt(i)];
-    const encoded2 = lookup[cleaned.charCodeAt(i + 1)];
-    const encoded3 = lookup[cleaned.charCodeAt(i + 2)];
-    const encoded4 = lookup[cleaned.charCodeAt(i + 3)];
-
-    bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
-    if (encoded3 !== 64) {
-      bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
-    }
-    if (encoded4 !== 64) {
-      bytes[p++] = ((encoded3 & 3) << 6) | encoded4;
-    }
-  }
-
-  return bytes;
-};
-
 export const uploadImage = async (
   uri: string,
   bucketName: string,
-): Promise<string> => {
-  const extension = "jpg";
-  const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-  const filePath = `${fileName}`;
+): Promise<{ url: string; path: string }> => {
+  const extension = getFileExtension(uri);
+  const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
   const contentType = getContentType(extension);
 
-  // preparing upload metadata
-
-  try {
-    const compressed = await ImageManipulator.manipulateAsync(uri, [], {
-      compress: 0.8,
-      format: ImageManipulator.SaveFormat.JPEG,
-      base64: true,
-    });
-
-    if (!compressed.base64) {
-      throw new Error("Image manipulator did not return base64 data.");
-    }
-
-    const uploadData = decodeBase64ToUint8Array(compressed.base64);
-
-    const { data, error: uploadError } = await supabase.storage
-      .from(bucketName)
-      .upload(filePath, uploadData, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType,
-      });
-
-    // result is checked below
-
-    if (uploadError) {
-      throw new Error(`Supabase storage upload failed: ${uploadError.message}`);
-    }
-
-    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(filePath);
-    if (!publicUrlData?.publicUrl) {
-      throw new Error("Failed to retrieve public URL from Supabase storage.");
-    }
-
-    return publicUrlData.publicUrl;
-  } catch (error: unknown) {
-    throw error instanceof Error
-      ? error
-      : new Error("Supabase upload pipeline failed.");
-  }
+  return uploadFileToSupabaseStorage({
+    uri,
+    bucketName,
+    filePath,
+    contentType,
+    compressImage: true,
+    maxFileSizeBytes: 5 * 1024 * 1024,
+  });
 };
 
 export const uploadIdentificationImage = async (
   uri: string,
   bucketName: string,
-): Promise<string> => uploadImage(uri, bucketName);
+): Promise<{ url: string; path: string }> => uploadImage(uri, bucketName);
 
 export const createUserDocument = async (
   uid: string,
@@ -265,16 +185,16 @@ export const registerUser = async (
     }
 
     try {
-      const profilePhotoUrl = await uploadImage(
+      const profilePhotoUpload = await uploadImage(
         formData.personalInformation.profilePhotoUri,
         "profile_photo",
       );
 
-      const frontIdUrl = await uploadIdentificationImage(
+      const frontIdUpload = await uploadIdentificationImage(
         formData.documents.frontIdUri,
         "identification",
       );
-      const backIdUrl = await uploadIdentificationImage(
+      const backIdUpload = await uploadIdentificationImage(
         formData.documents.backIdUri,
         "identification",
       );
@@ -285,9 +205,9 @@ export const registerUser = async (
         email,
         formData.personalInformation,
         formData.residenceInformation,
-        profilePhotoUrl,
-        frontIdUrl,
-        backIdUrl,
+        profilePhotoUpload.url,
+        frontIdUpload.url,
+        backIdUpload.url,
         referenceId,
       );
 
