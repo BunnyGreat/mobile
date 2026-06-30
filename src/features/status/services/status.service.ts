@@ -61,11 +61,16 @@ export const fetchRequests = async (): Promise<UnifiedRequest[]> => {
   const certSnapshot = await getDocs(certQuery);
   const certificates = certSnapshot.docs.map((doc) => {
     const data = doc.data();
+    let status = data.status ?? "submitted";
+    // Map 'pending' to 'submitted'
+    if (status === "pending") {
+      status = "submitted";
+    }
     return {
       certificateId: doc.id,
       uid: data.uid ?? "",
       certificateType: data.certificateType ?? "barangay_clearance",
-      status: data.status ?? "submitted",
+      status: status as any,
       createdAt: data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
       updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
     } satisfies CertificateRequest;
@@ -76,11 +81,16 @@ export const fetchRequests = async (): Promise<UnifiedRequest[]> => {
   const apptSnapshot = await getDocs(apptQuery);
   const appointments = apptSnapshot.docs.map((doc) => {
     const data = doc.data();
+    let status = data.status ?? "submitted";
+    // Map 'pending' to 'submitted'
+    if (status === "pending") {
+      status = "submitted";
+    }
     return {
       appointmentId: doc.id,
       uid: data.uid ?? "",
       purpose: data.purpose ?? "",
-      status: data.status ?? "submitted",
+      status: status as any,
       createdAt: data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
       updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
     } satisfies AppointmentRequest;
@@ -122,11 +132,16 @@ export const subscribeToRequests = (
     (snapshot) => {
       certificates = snapshot.docs.map((doc) => {
         const data = doc.data();
+        let status = data.status ?? "submitted";
+        // Map 'pending' to 'submitted'
+        if (status === "pending") {
+          status = "submitted";
+        }
         return {
           certificateId: doc.id,
           uid: data.uid ?? "",
           certificateType: data.certificateType ?? "barangay_clearance",
-          status: data.status ?? "submitted",
+          status: status as any,
           createdAt: data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
           updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
         } satisfies CertificateRequest;
@@ -144,11 +159,16 @@ export const subscribeToRequests = (
     (snapshot) => {
       appointments = snapshot.docs.map((doc) => {
         const data = doc.data();
+        let status = data.status ?? "submitted";
+        // Map 'pending' to 'submitted'
+        if (status === "pending") {
+          status = "submitted";
+        }
         return {
           appointmentId: doc.id,
           uid: data.uid ?? "",
           purpose: data.purpose ?? "",
-          status: data.status ?? "submitted",
+          status: status as any,
           createdAt: data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
           updatedAt: data.updatedAt?.toDate?.().toISOString?.() ?? new Date().toISOString(),
         } satisfies AppointmentRequest;

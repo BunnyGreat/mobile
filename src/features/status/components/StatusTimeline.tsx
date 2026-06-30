@@ -36,22 +36,15 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({ request }) => {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: SPACING.lg,
-    marginBottom: SPACING.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    paddingVertical: SPACING.lg,
+    paddingHorizontal: SPACING.lg,
   },
   timeline: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    paddingHorizontal: SPACING.sm,
+    flexDirection: "column",
   },
   stepContainer: {
-    alignItems: "center",
-    flex: 1,
+    flexDirection: "row",
+    minHeight: 56,
   },
 });
 

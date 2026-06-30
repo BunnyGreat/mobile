@@ -15,7 +15,7 @@ export const getStatusLabel = (status: RequestStatus): string => {
     case "rejected":
       return "Rejected";
     default:
-      return "Unknown";
+      return "Submitted";
   }
 };
 
