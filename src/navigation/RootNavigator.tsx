@@ -17,6 +17,7 @@ import ProfileScreens from "../features/profile/screens/ProfileScreens";
 import EditProfileScreen from "../features/profile/screens/EditProfileScreen";
 import ChangePasswordScreen from "../features/setting/screens/ChangePasswordScreen";
 import FeedbackScreen from "../features/feedback/screens/FeedbackScreen";
+import { AppointmentScreen } from "../features/appointment";
 import MainTabNavigator from "./MainTabNavigator";
 import QuickActionPlaceholderScreen from "../features/home/screens/QuickActionPlaceholderScreen";
 import { RootStackParamList } from "./types";
@@ -74,10 +75,7 @@ export const RootNavigator: React.FC = () => {
         component={QuickActionPlaceholderScreen}
       />
       <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />
-      <Stack.Screen
-        name="AppointmentScreen"
-        component={QuickActionPlaceholderScreen}
-      />
+      <Stack.Screen name="AppointmentScreen" component={AppointmentScreen} />
       <Stack.Screen name="MainTabs" component={MainTabNavigator} />
     </Stack.Navigator>
   );

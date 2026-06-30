@@ -10,6 +10,14 @@ export const SHADOWS = {
     elevation: 2,
   } as ViewStyle,
 
+  soft: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  } as ViewStyle,
+
   medium: {
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
