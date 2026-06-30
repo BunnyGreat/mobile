@@ -33,6 +33,12 @@ export interface UnifiedRequest {
   raw: CertificateRequest | AppointmentRequest;
 }
 
+export interface StatusTimelineItem {
+  status: RequestStatus;
+  title: string;
+  description: string;
+}
+
 export type FilterType = "all" | "certificates" | "appointments";
 
 export interface StatusStoreState {

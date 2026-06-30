@@ -3,11 +3,11 @@ import { View, Text, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import { getStatusIcon } from "../utils/statusIcon";
-import { getStatusLabel } from "../utils/statusLabel";
 import type { RequestStatus } from "../types/status.types";
 
 interface StatusStepProps {
   status: RequestStatus;
+  title: string;
   description: string;
   stepStatus: "completed" | "current" | "future";
   isLast?: boolean;
@@ -16,6 +16,7 @@ interface StatusStepProps {
 
 export const StatusStep: React.FC<StatusStepProps> = ({
   status,
+  title,
   description,
   stepStatus,
   isLast,
@@ -105,9 +106,7 @@ export const StatusStep: React.FC<StatusStepProps> = ({
       {/* Content Column */}
       <View style={styles.contentColumn}>
         <View style={styles.contentHeader}>
-          <Text style={[styles.stepTitle, { color: textColor }]}>
-            {getStatusLabel(status)}
-          </Text>
+          <Text style={[styles.stepTitle, { color: textColor }]}>{title}</Text>
           {stepStatus === "current" && (
             <View
               style={[
@@ -125,9 +124,9 @@ export const StatusStep: React.FC<StatusStepProps> = ({
         </View>
 
         <Text style={[styles.description, { color: descriptionColor }]}>
+          {" "}
           {description}
         </Text>
-
         {stepStatus === "completed" && (
           <View style={styles.completedInfo}>
             <Feather name="check-circle" size={12} color={COLORS.success} />
@@ -143,6 +142,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "flex-start",
+    width: "100%",
   },
   lineTopContainer: {
     position: "absolute",
@@ -194,19 +194,26 @@ const styles = StyleSheet.create({
   },
   contentColumn: {
     flex: 1,
+    flexGrow: 1,
+    minWidth: 0,
+    alignSelf: "stretch",
     marginLeft: SPACING.md,
     paddingTop: SPACING.xs,
     paddingBottom: SPACING.lg,
   },
   contentHeader: {
     flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 2,
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    flexWrap: "wrap",
+    marginBottom: 6,
   },
   stepTitle: {
+    flexShrink: 1,
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body14,
     marginRight: SPACING.sm,
+    maxWidth: "100%",
   },
   currentBadge: {
     paddingHorizontal: SPACING.sm,
@@ -220,9 +227,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   description: {
+    flexShrink: 1,
     fontFamily: FONT_FAMILY.regular,
     fontSize: FONT_SIZE.body12,
     lineHeight: 18,
+    marginTop: SPACING.xs,
+    minHeight: 40,
   },
   completedInfo: {
     flexDirection: "row",

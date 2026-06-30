@@ -2,12 +2,12 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { COLORS, SPACING } from "../../../theme";
 import StatusStep from "./StatusStep";
-import {
-  getTimelineForRequest,
-  getStepStatus,
-  getStatusDescription,
-} from "../utils/statusTimeline";
-import type { UnifiedRequest, RequestStatus } from "../types/status.types";
+import { getTimelineForRequest, getStepStatus } from "../utils/statusTimeline";
+import type {
+  UnifiedRequest,
+  RequestStatus,
+  StatusTimelineItem,
+} from "../types/status.types";
 
 interface StatusTimelineProps {
   request: UnifiedRequest;
@@ -22,17 +22,17 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({ request }) => {
   return (
     <View style={styles.container}>
       <View style={styles.timeline}>
-        {timeline.map((step, index) => {
+        {timeline.map((step: StatusTimelineItem, index) => {
           const stepStatus = getStepStatus(step, request.status, timeline);
           const isLast = index === timeline.length - 1;
           const stepNumber = index + 1;
-          const description = getStatusDescription(step as RequestStatus);
 
           return (
-            <View key={step} style={styles.stepContainer}>
+            <View key={`${step.status}-${index}`} style={styles.stepContainer}>
               <StatusStep
-                status={step as RequestStatus}
-                description={description}
+                status={step.status}
+                title={step.title}
+                description={step.description}
                 stepStatus={stepStatus}
                 isLast={isLast}
                 stepNumber={stepNumber}
@@ -80,6 +80,8 @@ const styles = StyleSheet.create({
   stepContainer: {
     flexDirection: "row",
     minHeight: 60,
+    flex: 1,
+    alignItems: "flex-start",
   },
   progressSummary: {
     marginTop: SPACING.lg,

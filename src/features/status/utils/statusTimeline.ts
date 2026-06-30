@@ -1,83 +1,92 @@
-import type { CertificateStatus, AppointmentStatus, RequestType, RequestStatus } from "../types/status.types";
+import { getStatusLabel } from "./statusLabel";
+import type {
+  CertificateStatus,
+  AppointmentStatus,
+  RequestStatus,
+  RequestType,
+  StatusTimelineItem,
+} from "../types/status.types";
 
-export const getStatusDescription = (status: RequestStatus): string => {
-  switch (status) {
-    case "submitted":
-      return "Your request has been successfully submitted and is waiting for review.";
-    case "under_review":
-      return "Our barangay staff is currently reviewing your request.";
-    case "approved":
-      return "Your request has been approved.";
-    case "ready_for_pickup":
-      return "Your document is ready for pickup at the Barangay Office.";
-    case "completed":
-      return "This request has been completed.";
-    case "rejected":
-      return "Unfortunately, your request has been rejected.\nPlease review the reason provided by the Barangay Office.";
-    default:
-      return "";
-  }
-};
+const buildTimelineItem = (status: RequestStatus): StatusTimelineItem => ({
+  status,
+  title: getStatusLabel(status),
+  description:
+    status === "submitted"
+      ? "Your request has been successfully submitted and is waiting for review."
+      : status === "under_review"
+      ? "Our barangay staff is currently reviewing your request."
+      : status === "approved"
+      ? "Your request has been approved."
+      : status === "ready_for_pickup"
+      ? "Your document is ready for pickup at the Barangay Office."
+      : status === "completed"
+      ? "This request has been completed."
+      : status === "rejected"
+      ? "Unfortunately, your request has been rejected.\nPlease review the reason provided by the Barangay Office."
+      : "",
+});
 
-export const getCertificateTimeline = (): CertificateStatus[] => [
-  "submitted",
-  "under_review",
-  "approved",
-  "ready_for_pickup",
-  "completed",
+export const getCertificateTimeline = (): StatusTimelineItem[] => [
+  buildTimelineItem("submitted"),
+  buildTimelineItem("under_review"),
+  buildTimelineItem("approved"),
+  buildTimelineItem("ready_for_pickup"),
+  buildTimelineItem("completed"),
 ];
 
-export const getCertificateTimelineWithRejection = (): CertificateStatus[] => [
-  "submitted",
-  "under_review",
-  "rejected",
+export const getCertificateTimelineWithRejection = (): StatusTimelineItem[] => [
+  buildTimelineItem("submitted"),
+  buildTimelineItem("under_review"),
+  buildTimelineItem("rejected"),
 ];
 
-export const getAppointmentTimeline = (): AppointmentStatus[] => [
-  "submitted",
-  "under_review",
-  "approved",
-  "completed",
+export const getAppointmentTimeline = (): StatusTimelineItem[] => [
+  buildTimelineItem("submitted"),
+  buildTimelineItem("under_review"),
+  buildTimelineItem("approved"),
+  buildTimelineItem("completed"),
 ];
 
-export const getAppointmentTimelineWithRejection = (): AppointmentStatus[] => [
-  "submitted",
-  "under_review",
-  "rejected",
+export const getAppointmentTimelineWithRejection = (): StatusTimelineItem[] => [
+  buildTimelineItem("submitted"),
+  buildTimelineItem("under_review"),
+  buildTimelineItem("rejected"),
 ];
 
 export const getTimelineForRequest = (
   type: RequestType,
   currentStatus: RequestStatus,
-): RequestStatus[] => {
+): StatusTimelineItem[] => {
   if (type === "certificate") {
     const certStatus = currentStatus as CertificateStatus;
     if (certStatus === "rejected") {
-      return getCertificateTimelineWithRejection() as RequestStatus[];
+      return getCertificateTimelineWithRejection();
     }
-    return getCertificateTimeline() as RequestStatus[];
-  } else {
-    const appStatus = currentStatus as AppointmentStatus;
-    if (appStatus === "rejected") {
-      return getAppointmentTimelineWithRejection() as RequestStatus[];
-    }
-    return getAppointmentTimeline() as RequestStatus[];
+    return getCertificateTimeline();
   }
+
+  const appStatus = currentStatus as AppointmentStatus;
+  if (appStatus === "rejected") {
+    return getAppointmentTimelineWithRejection();
+  }
+  return getAppointmentTimeline();
 };
 
 export const getStepStatus = (
-  stepName: RequestStatus,
+  step: StatusTimelineItem,
   currentStatus: RequestStatus,
-  timeline: RequestStatus[],
+  timeline: StatusTimelineItem[],
 ): "completed" | "current" | "future" => {
-  const stepIndex = timeline.indexOf(stepName);
-  const currentIndex = timeline.indexOf(currentStatus);
+  const stepIndex = timeline.findIndex((item) => item.status === step.status);
+  const currentIndex = timeline.findIndex(
+    (item) => item.status === currentStatus,
+  );
 
   if (stepIndex < currentIndex) {
     return "completed";
-  } else if (stepIndex === currentIndex) {
-    return "current";
-  } else {
-    return "future";
   }
+  if (stepIndex === currentIndex) {
+    return "current";
+  }
+  return "future";
 };
