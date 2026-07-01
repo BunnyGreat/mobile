@@ -1,12 +1,19 @@
 import React from "react";
-import { Modal, Pressable, StyleSheet, Text, View, ViewStyle } from "react-native";
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  ViewStyle,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../theme";
 
 interface SelectFieldProps {
   value: string;
   placeholder?: string;
-  options: string[];
+  options: readonly string[];
   onChange: (value: string) => void;
   label?: string;
   error?: string;
@@ -53,7 +60,10 @@ export const SelectField: React.FC<SelectFieldProps> = ({
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{label || "Select Option"}</Text>
-              <Pressable onPress={() => setVisible(false)} style={styles.closeButton}>
+              <Pressable
+                onPress={() => setVisible(false)}
+                style={styles.closeButton}
+              >
                 <Feather name="x" size={20} color={COLORS.paragraph} />
               </Pressable>
             </View>

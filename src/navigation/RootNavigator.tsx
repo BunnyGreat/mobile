@@ -20,7 +20,8 @@ import FeedbackScreen from "../features/feedback/screens/FeedbackScreen";
 import { AppointmentScreen } from "../features/appointment";
 import { AnnouncementScreen } from "../features/announcement";
 import MainTabNavigator from "./MainTabNavigator";
-import QuickActionPlaceholderScreen from "../features/home/screens/QuickActionPlaceholderScreen";
+import RequestCertificateScreen from "../features/request-certificate/screens/RequestCertificateScreen";
+import BarangayClearanceScreen from "../features/request-certificate/screens/BarangayClearanceScreen";
 import { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -69,7 +70,11 @@ export const RootNavigator: React.FC = () => {
       />
       <Stack.Screen
         name="RequestCertificateScreen"
-        component={QuickActionPlaceholderScreen}
+        component={RequestCertificateScreen}
+      />
+      <Stack.Screen
+        name="BarangayClearance"
+        component={BarangayClearanceScreen}
       />
       <Stack.Screen name="AnnouncementScreen" component={AnnouncementScreen} />
       <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />

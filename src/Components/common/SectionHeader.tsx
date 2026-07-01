@@ -11,6 +11,7 @@ import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../theme";
 export interface SectionHeaderProps {
   title: string;
   subtitle?: string;
+  description?: string;
   actionText?: string;
   onActionPress?: () => void;
   containerStyle?: StyleProp<ViewStyle>;
@@ -19,10 +20,13 @@ export interface SectionHeaderProps {
 export const SectionHeader: React.FC<SectionHeaderProps> = ({
   title,
   subtitle,
+  description,
   actionText,
   onActionPress,
   containerStyle,
 }) => {
+  const displayText = subtitle ?? description;
+
   return (
     <View
       style={[
@@ -45,7 +49,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
         >
           {title}
         </Text>
-        {subtitle ? (
+        {displayText ? (
           <Text
             style={{
               fontSize: FONT_SIZE.body12,
@@ -54,7 +58,7 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({
               marginTop: SPACING.xs,
             }}
           >
-            {subtitle}
+            {displayText}
           </Text>
         ) : null}
       </View>

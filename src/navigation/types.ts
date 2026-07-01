@@ -25,10 +25,16 @@ export type RootStackParamList = {
   EditProfile: undefined;
   ChangePasswordScreen: undefined;
   RequestCertificateScreen: undefined;
+  BarangayClearance: undefined;
   AnnouncementScreen: undefined;
   FeedbackScreen: undefined;
   AppointmentScreen: undefined;
-  MainTabs: undefined;
+  MainTabs:
+    | {
+        screen: keyof MainTabParamList;
+        params?: object;
+      }
+    | undefined;
 };
 
 export type RootStackNavigationProp = NativeStackNavigationProp<RootStackParamList>;
