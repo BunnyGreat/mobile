@@ -1,5 +1,6 @@
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
 import { auth } from "../../../services/firebase/firebase";
+import { supabaseUpdatePassword } from "../../../services/supabase/auth.service";
 
 export const changePassword = async (
   currentPassword: string,
@@ -22,4 +23,11 @@ export const changePassword = async (
 
   await reauthenticateWithCredential(user, credential);
   await updatePassword(user, trimmedNewPassword);
+
+  // Update Supabase password for the current Supabase session
+  const supabaseResult = await supabaseUpdatePassword(trimmedNewPassword);
+  if (supabaseResult?.error) {
+    const e = supabaseResult.error as Error;
+    throw new Error(`Failed to update Supabase password: ${e.message || String(e)}`);
+  }
 };

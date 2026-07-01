@@ -6,6 +6,7 @@ export interface ProfilePersonalInformation {
   lastName: string;
   suffix?: string | null;
   dateOfBirth: string;
+  birthplace?: string | null;
   gender: "male" | "female" | "other";
   civilStatus: "single" | "married" | "widowed" | "separated" | "divorced";
   contactNumber: string;
@@ -24,6 +25,8 @@ export interface ProfileResidenceInformation {
 }
 
 export interface ProfileDocuments {
+  frontIdPath?: string | null;
+  backIdPath?: string | null;
   frontIdUrl?: string | null;
   backIdUrl?: string | null;
 }

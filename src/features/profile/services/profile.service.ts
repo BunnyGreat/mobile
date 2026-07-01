@@ -1,6 +1,7 @@
 import { auth, db } from "../../../services/firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import { deletePreviousPhoto, uploadPhoto } from "./profilePhoto.service";
+import { getFileSignedOrPublicUrl } from "../../../services/supabase/storageUpload.service";
 import { saveProfileCache } from "./profileCache.service";
 import type {
   Profile,
@@ -67,6 +68,7 @@ const buildProfileFromRow = (row: Record<string, any>, uid: string, email: strin
     lastName: safeTrim(personal.lastName),
     suffix: safeTrim(personal.suffix) || null,
     dateOfBirth: safeTrim(personal.dateOfBirth),
+    birthplace: safeTrim(personal.birthplace) || null,
     gender: allowedGenders.includes(gender as any) ? gender : "other",
     civilStatus: allowedCivilStatuses.includes(civilStatus as any) ? civilStatus : "single",
     contactNumber: safeTrim(personal.contactNumber) || "Not Available",
@@ -87,6 +89,8 @@ const buildProfileFromRow = (row: Record<string, any>, uid: string, email: strin
   };
 
   const documentsSection: ProfileDocuments = {
+    frontIdPath: safeTrim(documents.frontIdPath) || null,
+    backIdPath: safeTrim(documents.backIdPath) || null,
     frontIdUrl: safeTrim(documents.frontIdUrl) || null,
     backIdUrl: safeTrim(documents.backIdUrl) || null,
   };
@@ -111,6 +115,7 @@ export interface UpdateProfilePayload {
   firstName: string;
   middleName?: string | null;
   lastName: string;
+  birthplace?: string;
   contactNumber: string;
   gender: ProfilePersonalInformation["gender"];
   civilStatus: ProfilePersonalInformation["civilStatus"];
@@ -140,6 +145,22 @@ export const getProfile = async (): Promise<Profile> => {
 
   const data = userSnap.data() as Record<string, any>;
   const profile = buildProfileFromRow(data, currentUser.uid, currentUser.email);
+  // Resolve storage paths to accessible URLs where applicable
+  try {
+    if (profile.profilePhotoPath) {
+      profile.profilePhotoUrl = await getFileSignedOrPublicUrl("profile_photo", profile.profilePhotoPath);
+    }
+    if (profile.documents?.frontIdPath) {
+      profile.documents.frontIdUrl = await getFileSignedOrPublicUrl("identification", profile.documents.frontIdPath);
+    }
+    if (profile.documents?.backIdPath) {
+      profile.documents.backIdUrl = await getFileSignedOrPublicUrl("identification", profile.documents.backIdPath);
+    }
+  } catch (err) {
+    // Non-fatal: leave URLs null if signed/public URL generation fails
+    console.warn("[PROFILE] Failed to generate storage access URLs", err);
+  }
+
   await saveProfileCache(profile);
 
   return profile;
@@ -158,6 +179,7 @@ export const updateProfile = async (
     "personalInformation.firstName": safeTrim(payload.firstName),
     "personalInformation.middleName": payload.middleName ? safeTrim(payload.middleName) : null,
     "personalInformation.lastName": safeTrim(payload.lastName),
+    "personalInformation.birthplace": payload.birthplace ? safeTrim(payload.birthplace) : null,
     "personalInformation.contactNumber": safeTrim(payload.contactNumber),
     "personalInformation.gender": payload.gender,
     "personalInformation.civilStatus": payload.civilStatus,
@@ -188,6 +210,20 @@ export const updateProfile = async (
 
   const updatedData = updatedDoc.data() as Record<string, any>;
   const profile = buildProfileFromRow(updatedData, currentUser.uid, currentUser.email);
+  try {
+    if (profile.profilePhotoPath) {
+      profile.profilePhotoUrl = await getFileSignedOrPublicUrl("profile_photo", profile.profilePhotoPath);
+    }
+    if (profile.documents?.frontIdPath) {
+      profile.documents.frontIdUrl = await getFileSignedOrPublicUrl("identification", profile.documents.frontIdPath);
+    }
+    if (profile.documents?.backIdPath) {
+      profile.documents.backIdUrl = await getFileSignedOrPublicUrl("identification", profile.documents.backIdPath);
+    }
+  } catch (err) {
+    console.warn("[PROFILE] Failed to generate storage access URLs", err);
+  }
+
   await saveProfileCache(profile);
 
   return profile;

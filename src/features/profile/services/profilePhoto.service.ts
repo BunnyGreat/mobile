@@ -1,6 +1,7 @@
 import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../../services/supabase/supabase";
+import { uploadFileToSupabase, getFileSignedOrPublicUrl } from "../../../services/supabase/storageUpload.service";
 
 export const requestLibraryPermission = async (): Promise<boolean> => {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -34,7 +35,9 @@ export const compressPhoto = async (uri: string): Promise<string> => {
   return result.uri;
 };
 
-const getUploadPath = (uid: string): string => `${uid}/${Date.now()}.jpg`;
+const PROFILE_FILE_NAME = "profile.jpg";
+
+const getUploadPath = (uid: string): string => `${uid}/${PROFILE_FILE_NAME}`;
 
 const fetchBlobFromUri = async (
   uri: string,
@@ -58,37 +61,23 @@ export const uploadPhoto = async (
   uri: string,
   uid: string,
 ): Promise<{ profilePhotoUrl: string; profilePhotoPath: string }> => {
-  const filePath = getUploadPath(uid);
-  const fileBuffer = await fetchBlobFromUri(uri);
+  // Upload using centralized helper; set upsert true to overwrite existing profile image
+  const result = await uploadFileToSupabase({
+    uid,
+    bucketName: "profile_photo",
+    fileName: PROFILE_FILE_NAME,
+    uri,
+    contentType: "image/jpeg",
+    compressImage: false,
+    upsert: true,
+  });
 
-  const { data: uploadData, error } = await supabase.storage
-    .from("profile_photo")
-    .upload(filePath, fileBuffer as any, {
-      cacheControl: "3600",
-      contentType: "image/jpeg",
-      upsert: false,
-    });
-
-  if (error) {
-    // Log full error details for debugging
-    console.error("[SUPABASE UPLOAD ERROR]", {
-      message: error.message,
-      status: (error as any)?.status,
-      details: (error as any)?.details,
-      hint: (error as any)?.hint,
-    });
-    throw new Error(`Supabase storage upload failed: ${error.message}`);
-  }
-
-  const { data } = supabase.storage.from("profile_photo").getPublicUrl(filePath);
-
-  if (!data?.publicUrl) {
-    throw new Error("Failed to retrieve public URL from Supabase storage.");
-  }
+  // Generate access URL depending on bucket privacy
+  const url = await getFileSignedOrPublicUrl("profile_photo", result.path);
 
   return {
-    profilePhotoUrl: data.publicUrl,
-    profilePhotoPath: filePath,
+    profilePhotoUrl: url,
+    profilePhotoPath: result.path,
   };
 };
 
@@ -108,11 +97,5 @@ export const deletePreviousPhoto = async (path?: string): Promise<void> => {
 };
 
 export const getPublicUrl = async (path: string): Promise<string> => {
-  const { data } = supabase.storage.from("profile_photo").getPublicUrl(path);
-
-  if (!data?.publicUrl) {
-    throw new Error("Failed to retrieve public URL from Supabase storage.");
-  }
-
-  return data.publicUrl;
+  return getFileSignedOrPublicUrl("profile_photo", path);
 };

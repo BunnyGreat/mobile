@@ -13,6 +13,7 @@ export interface PersonalInformation {
   middleName?: string;
   lastName: string;
   profilePhotoUrl?: string;
+  profilePhotoPath?: string;
 }
 
 export interface LoginUser {

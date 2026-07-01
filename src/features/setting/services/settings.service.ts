@@ -2,6 +2,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../../services/firebase/firebase";
 import { signOut } from "firebase/auth";
 import type { SettingsProfile } from "../types/settings.types";
+import { getFileSignedOrPublicUrl } from "../../../services/supabase/storageUpload.service";
 
 const buildFullName = (firstName?: string, middleName?: string, lastName?: string) => {
   return [
@@ -42,8 +43,17 @@ export const getSettingsProfile = async (): Promise<SettingsProfile> => {
   const data = userSnap.data() as Record<string, any>;
   const personalInformation = data.personalInformation ?? {};
 
+  let profilePhotoUrl = personalInformation.profilePhotoUrl;
+  if (!profilePhotoUrl && personalInformation.profilePhotoPath) {
+    try {
+      profilePhotoUrl = await getFileSignedOrPublicUrl("profile_photo", personalInformation.profilePhotoPath);
+    } catch (err) {
+      // ignore
+    }
+  }
+
   return {
-    profilePhotoUrl: personalInformation.profilePhotoUrl,
+    profilePhotoUrl,
     fullName:
       buildFullName(
         personalInformation.firstName,
@@ -61,6 +71,15 @@ export const logoutUser = async (): Promise<
 > => {
   try {
     await signOut(auth);
+    // Also sign out from Supabase
+    try {
+      const { supabaseSignOut } = await import("../../../services/supabase/auth.service");
+      await supabaseSignOut();
+    } catch (sErr) {
+      console.warn("[SETTINGS] Supabase signOut failed:", sErr);
+      // proceed even if supabase sign out failed
+    }
+
     return { success: true };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unable to logout.";

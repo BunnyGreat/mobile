@@ -1,4 +1,4 @@
-import { supabase } from "../../../services/supabase/supabase";
+import { uploadFileToSupabase, getFileSignedOrPublicUrl } from "../../../services/supabase/storageUpload.service";
 
 const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024;
 const allowedContentTypes = [
@@ -28,46 +28,31 @@ export const uploadAppointmentDocument = async (
   fileName: string,
 ): Promise<{ documentUrl: string; documentPath: string }> => {
   const extension = getFileExtension(fileName);
-  const documentPath = `appointments/${uid}/${Date.now()}.${extension}`;
-  const fileBuffer = await fetchFileBuffer(uri);
+  const normalizedFileName = fileName.toLowerCase().endsWith(`.${extension}`)
+    ? fileName
+    : `${fileName}.${extension}`;
 
-  if (fileBuffer.byteLength > MAX_DOCUMENT_SIZE_BYTES) {
-    throw new Error("File size must be 5 MB or less.");
-  }
-
-  const contentType =
-    fileName.toLowerCase().endsWith(".pdf")
+  const uploadResult = await uploadFileToSupabase({
+    uid,
+    bucketName: "appointment_docs",
+    fileName: normalizedFileName,
+    uri,
+    contentType: fileName.toLowerCase().endsWith(".pdf")
       ? "application/pdf"
       : fileName.toLowerCase().endsWith(".doc")
         ? "application/msword"
         : fileName.toLowerCase().endsWith(".docx")
           ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          : null;
+          : "application/octet-stream",
+    compressImage: false,
+    maxFileSizeBytes: MAX_DOCUMENT_SIZE_BYTES,
+    upsert: false,
+  });
 
-  if (!contentType || !allowedContentTypes.includes(contentType)) {
-    throw new Error("Only PDF, DOC, and DOCX files are allowed.");
-  }
-
-  const { data: uploadData, error } = await supabase.storage
-    .from("appointment_docs")
-    .upload(documentPath, fileBuffer as any, {
-      cacheControl: "3600",
-      contentType,
-      upsert: false,
-    });
-
-  if (error) {
-    throw new Error(`Unable to upload supporting document. Please try again.`);
-  }
-
-  const { data } = supabase.storage.from("appointment_docs").getPublicUrl(documentPath);
-
-  if (!data?.publicUrl) {
-    throw new Error("Unable to upload supporting document. Please try again.");
-  }
+  const url = await getFileSignedOrPublicUrl("appointment_docs", uploadResult.path);
 
   return {
-    documentUrl: data.publicUrl,
-    documentPath,
+    documentUrl: url,
+    documentPath: uploadResult.path,
   };
 };
