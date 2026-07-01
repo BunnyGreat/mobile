@@ -2,6 +2,7 @@ import { auth, db } from "../../../../../services/firebase/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import type { LoginResponse, LoginUser } from "../types/login.types";
+import { getFileSignedOrPublicUrl } from "../../../../../services/supabase/storageUpload.service";
 
 export const loginUser = async (
   email: string,
@@ -27,9 +28,9 @@ export const loginUser = async (
       firstName: data.personalInformation?.firstName ?? "",
       middleName: data.personalInformation?.middleName ?? "",
       lastName: data.personalInformation?.lastName ?? "",
+      profilePhotoPath: data.personalInformation?.profilePhotoPath ?? undefined,
       profilePhotoUrl: data.personalInformation?.profilePhotoUrl ?? undefined,
     };
-    const profilePhotoUrl: string | undefined = personalInformation.profilePhotoUrl;
 
     if (status === "pending") {
       return { success: false, error: "Your registration is still under review." };
@@ -37,6 +38,30 @@ export const loginUser = async (
 
     if (status === "rejected") {
       return { success: false, error: "Your registration has been rejected." };
+    }
+
+    // Sign in to Supabase before resolving private storage URLs.
+    try {
+      const { supabaseSignIn } = await import(
+        "../../../../../services/supabase/auth.service"
+      );
+      const supa = await supabaseSignIn(email, password);
+      if (supa?.error) {
+        console.error("[LOGIN] Supabase signIn failed:", supa.error);
+        return { success: false, error: "Unable to sign into storage service." };
+      }
+    } catch (e) {
+      console.error("[LOGIN] Supabase signIn error:", e);
+      return { success: false, error: "Unable to sign into storage service." };
+    }
+
+    let profilePhotoUrl: string | undefined = personalInformation.profilePhotoUrl;
+    if (!profilePhotoUrl && personalInformation.profilePhotoPath) {
+      try {
+        profilePhotoUrl = await getFileSignedOrPublicUrl("profile_photo", personalInformation.profilePhotoPath);
+      } catch (_err) {
+        // ignore; leave undefined if URL resolution fails
+      }
     }
 
     const user: LoginUser = {

@@ -1,5 +1,5 @@
 import { auth, db } from "../../../../../services/firebase/firebase";
-import { uploadFileToSupabaseStorage } from "../../../../../services/supabase/storageUpload.service";
+import { uploadFileToSupabase } from "../../../../../services/supabase/storageUpload.service";
 import {
   createUserWithEmailAndPassword,
   deleteUser,
@@ -102,35 +102,38 @@ const getContentType = (extension: string): string => {
 
 export const uploadImage = async (
   uri: string,
+  uid: string,
   bucketName: string,
-): Promise<{ url: string; path: string }> => {
-  const extension = getFileExtension(uri);
-  const filePath = `${Date.now()}-${Math.random().toString(36).slice(2)}.${extension}`;
-  const contentType = getContentType(extension);
-
-  return uploadFileToSupabaseStorage({
-    uri,
+  fileName: string,
+): Promise<{ path: string }> => {
+  // Use centralized upload utility — deterministic path: {uid}/{fileName}
+  return uploadFileToSupabase({
+    uid,
     bucketName,
-    filePath,
-    contentType,
+    fileName,
+    uri,
+    contentType: getContentType(getFileExtension(uri)),
     compressImage: true,
     maxFileSizeBytes: 5 * 1024 * 1024,
+    upsert: true,
   });
 };
 
 export const uploadIdentificationImage = async (
   uri: string,
+  uid: string,
   bucketName: string,
-): Promise<{ url: string; path: string }> => uploadImage(uri, bucketName);
+  fileName: string,
+): Promise<{ path: string }> => uploadImage(uri, uid, bucketName, fileName);
 
 export const createUserDocument = async (
   uid: string,
   email: string,
   personalInformation: RegistrationPersonalInformation,
   residenceInformation: RegistrationResidenceInformation,
-  profilePhotoUrl: string,
-  frontIdUrl: string,
-  backIdUrl: string,
+  profilePhotoPath: string,
+  frontIdPath: string,
+  backIdPath: string,
   referenceId: string,
 ): Promise<void> => {
   const userRef = doc(db, "users", uid);
@@ -143,12 +146,12 @@ export const createUserDocument = async (
     referenceId,
     personalInformation: {
       ...personalInformation,
-      profilePhotoUrl,
+      profilePhotoPath,
     },
     residenceInformation,
     documents: {
-      frontIdUrl,
-      backIdUrl,
+      frontIdPath,
+      backIdPath,
     },
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -185,18 +188,35 @@ export const registerUser = async (
     }
 
     try {
+      // Ensure Supabase user exists and sign in so uploads can use RLS
+      const { supabaseCreateOrSignIn } = await import(
+        "../../../../../services/supabase/auth.service"
+      );
+
+      const supabaseAuthResult = await supabaseCreateOrSignIn(email, password);
+      if (supabaseAuthResult?.error) {
+        throw supabaseAuthResult.error;
+      }
+
       const profilePhotoUpload = await uploadImage(
         formData.personalInformation.profilePhotoUri,
+        uid,
         "profile_photo",
+        "profile.jpg",
       );
 
       const frontIdUpload = await uploadIdentificationImage(
         formData.documents.frontIdUri,
+        uid,
         "identification",
+        "front_id.jpg",
       );
+
       const backIdUpload = await uploadIdentificationImage(
         formData.documents.backIdUri,
+        uid,
         "identification",
+        "back_id.jpg",
       );
 
       const referenceId = generateReferenceId();
@@ -205,19 +225,21 @@ export const registerUser = async (
         email,
         formData.personalInformation,
         formData.residenceInformation,
-        profilePhotoUpload.url,
-        frontIdUpload.url,
-        backIdUpload.url,
+        profilePhotoUpload.path,
+        frontIdUpload.path,
+        backIdUpload.path,
         referenceId,
       );
 
       return { success: true, uid, referenceId };
     } catch (registrationError: unknown) {
+      // Log the original registration error for debugging before rollback
+      console.error("[REGISTER ERROR] during uploads/createUserDocument", registrationError);
       if (credential.user) {
         try {
           await deleteUser(credential.user);
-        } catch (rollbackError: unknown) {
-          // rollback failed
+        } catch {
+          // Rollback failure is non-fatal; preserve the original registration error below.
         }
       }
       throw registrationError;
@@ -233,6 +255,7 @@ export const registerUser = async (
           "This email is already registered. Please use another email address or log in instead.",
       };
     }
+
     const message =
       error instanceof Error ? error.message : "Unknown registration error";
     return { success: false, error: message };
