@@ -5,6 +5,7 @@ export interface RegistrationPersonalInformation {
   middleName: string;
   lastName: string;
   suffix: string;
+  birthplace: string;
   dateOfBirth: string;
   gender: "male" | "female" | "other";
   civilStatus: "single" | "married" | "widowed" | "separated" | "divorced";

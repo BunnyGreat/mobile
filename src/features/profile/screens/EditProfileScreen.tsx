@@ -48,6 +48,7 @@ const EditProfileScreen: React.FC = () => {
     email: "",
     contactNumber: "",
     dateOfBirth: "",
+    birthplace: "",
     gender: "",
     civilStatus: "",
     houseNumber: "",
@@ -67,6 +68,7 @@ const EditProfileScreen: React.FC = () => {
         email: profile.email,
         contactNumber: profile.phoneNumber,
         dateOfBirth: profile.personalInformation.dateOfBirth,
+        birthplace: profile.personalInformation.birthplace ?? "",
         gender: profile.personalInformation.gender,
         civilStatus: profile.personalInformation.civilStatus,
         houseNumber: profile.residenceInformation.houseNumber,
@@ -178,6 +180,7 @@ const EditProfileScreen: React.FC = () => {
       const updatedProfile = await updateProfile({
         firstName: formValues.firstName,
         middleName: formValues.middleName || null,
+        birthplace: formValues.birthplace || "",
         lastName: formValues.lastName,
         contactNumber: formValues.contactNumber,
         gender: formValues.gender as "male" | "female" | "other",

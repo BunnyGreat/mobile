@@ -17,6 +17,7 @@ export interface EditProfileFormValues {
   email: string;
   contactNumber: string;
   dateOfBirth: string;
+  birthplace?: string;
   gender: "male" | "female" | "other" | "";
   civilStatus: "single" | "married" | "widowed" | "divorced" | "separated" | "";
   houseNumber?: string;
@@ -235,6 +236,16 @@ const EditProfileForm: React.FC<EditProfileFormProps> = ({
                 error={errors.gender}
               />
             </View>
+          </View>
+
+          <View style={styles.fieldSpacing}>
+            <AppInput
+              label="Birthplace"
+              value={values.birthplace ?? ""}
+              placeholder="Enter birthplace"
+              onChangeText={(text) => onChangeValue("birthplace", text)}
+              error={errors.birthplace}
+            />
           </View>
 
           <View style={styles.fieldSpacing}>

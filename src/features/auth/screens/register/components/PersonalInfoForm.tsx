@@ -31,6 +31,7 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
   const [middleName, setMiddleName] = useState("");
   const [lastName, setLastName] = useState("");
   const [suffix, setSuffix] = useState("");
+  const [birthplace, setBirthplace] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [gender, setGender] = useState<string>("male");
   const [civilStatus, setCivilStatus] = useState<string>("single");
@@ -73,6 +74,7 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
   const [lastNameError, setLastNameError] = useState("");
   const [contactNumberError, setContactNumberError] = useState("");
   const [dateOfBirthError, setDateOfBirthError] = useState("");
+  const [birthplaceError, setBirthplaceError] = useState("");
   const [genderError, setGenderError] = useState("");
   const [civilStatusError, setCivilStatusError] = useState("");
 
@@ -189,6 +191,9 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
           ? "Contact number must start with 9."
           : "";
     const dobValidation = dateOfBirth ? "" : "Date of birth is required.";
+    const birthplaceValidation = !birthplace.trim()
+      ? "Birthplace is required."
+      : "";
     const genderValidation = gender ? "" : "Gender is required.";
     const civilStatusValidation = civilStatus
       ? ""
@@ -200,6 +205,7 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
     setLastNameError(lastNameValidation);
     setContactNumberError(contactValidation);
     setDateOfBirthError(dobValidation);
+    setBirthplaceError(birthplaceValidation);
     setGenderError(genderValidation);
     setCivilStatusError(civilStatusValidation);
     setPhotoError(photoValidation);
@@ -210,6 +216,7 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
       !lastNameValidation &&
       !contactValidation &&
       !dobValidation &&
+      !birthplaceValidation &&
       !genderValidation &&
       !civilStatusValidation &&
       !photoValidation
@@ -220,6 +227,7 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
           middleName: middleName.trim(),
           lastName: lastName.trim(),
           suffix: suffix.trim(),
+          birthplace: birthplace.trim(),
           dateOfBirth: dateOfBirth ?? "",
           gender: gender as "male" | "female" | "other",
           civilStatus: civilStatus as
@@ -363,6 +371,18 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
         placeholder="e.g. Jr., Sr."
         value={suffix}
         onChangeText={setSuffix}
+      />
+
+      <AppInput
+        label="Birthplace"
+        required
+        placeholder="e.g. Quezon City"
+        value={birthplace}
+        onChangeText={(value) => {
+          setBirthplace(value);
+          if (birthplaceError) setBirthplaceError("");
+        }}
+        error={birthplaceError}
       />
 
       {/* Date of Birth (use date picker only) */}

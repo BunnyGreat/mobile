@@ -46,6 +46,7 @@ const PersonalInformationCard: React.FC<PersonalInformationCardProps> = ({
     lastName,
     suffix,
     dateOfBirth,
+    birthplace,
     gender,
     civilStatus,
     contactNumber,
@@ -81,6 +82,12 @@ const PersonalInformationCard: React.FC<PersonalInformationCardProps> = ({
       label: "Date of Birth",
       value: dateOfBirth || "Not Available",
       color: "#DC2626",
+    },
+    {
+      icon: "map-pin",
+      label: "Birthplace",
+      value: birthplace || "Not Available",
+      color: "#F59E0B",
     },
     {
       icon: "heart",
