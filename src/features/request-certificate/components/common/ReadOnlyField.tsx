@@ -14,13 +14,14 @@ export const ReadOnlyField: React.FC<ReadOnlyFieldProps> = ({
   value,
   multiline = false,
 }) => (
-  <View style={{ marginBottom: SPACING.lg }}>
+  <View style={{ marginBottom: SPACING.md }}>
     <Text
       style={{
-        fontSize: FONT_SIZE.body14,
+        fontSize: FONT_SIZE.body13,
         fontFamily: FONT_FAMILY.medium,
         color: COLORS.heading,
         marginBottom: SPACING.xs,
+        letterSpacing: -0.1,
       }}
     >
       {label}
@@ -30,27 +31,27 @@ export const ReadOnlyField: React.FC<ReadOnlyFieldProps> = ({
         flexDirection: "row",
         alignItems: multiline ? "flex-start" : "center",
         backgroundColor: COLORS.inputBackground,
-        borderRadius: 12,
+        borderRadius: 10,
         borderWidth: 1,
         borderColor: COLORS.border,
         paddingHorizontal: SPACING.md,
-        paddingVertical: multiline ? SPACING.md + 2 : SPACING.md + 2,
-        minHeight: multiline ? 84 : 50,
+        paddingVertical: SPACING.md,
+        minHeight: multiline ? 80 : 48,
       }}
     >
       <View
         style={{
-          width: 20,
-          height: 20,
-          borderRadius: 6,
-          backgroundColor: COLORS.border,
+          width: 18,
+          height: 18,
+          borderRadius: 5,
+          backgroundColor: `${COLORS.placeholder}15`,
           justifyContent: "center",
           alignItems: "center",
-          marginRight: SPACING.md,
+          marginRight: SPACING.sm + 2,
           marginTop: multiline ? 2 : 0,
         }}
       >
-        <Feather name="lock" size={11} color={COLORS.placeholder} />
+        <Feather name="lock" size={10} color={COLORS.placeholder} />
       </View>
       <Text
         style={{
@@ -58,7 +59,7 @@ export const ReadOnlyField: React.FC<ReadOnlyFieldProps> = ({
           fontSize: FONT_SIZE.body14,
           fontFamily: FONT_FAMILY.regular,
           color: COLORS.paragraph,
-          lineHeight: multiline ? 22 : 21,
+          lineHeight: multiline ? 20 : 20,
         }}
       >
         {value || "—"}

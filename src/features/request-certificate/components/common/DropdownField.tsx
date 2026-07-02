@@ -18,7 +18,7 @@ export const DropdownField: React.FC<DropdownFieldProps> = ({
   onChange,
   error,
 }) => (
-  <View style={{ marginBottom: SPACING.xl }}>
+  <View style={{ marginBottom: SPACING.md }}>
     <SelectField
       label={label}
       value={value}

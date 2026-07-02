@@ -42,12 +42,6 @@ const getCertificateIcon = (id: string) => {
   }
 };
 
-const CardCheck: React.FC = () => (
-  <View style={styles.checkCircle}>
-    <Feather name="check" size={12} color={COLORS.white} />
-  </View>
-);
-
 const RequestCertificateScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -60,7 +54,7 @@ const RequestCertificateScreen = () => {
     return (
       <TouchableOpacity
         key={item.id}
-        activeOpacity={item.disabled ? 1 : 0.7}
+        activeOpacity={item.disabled ? 1 : 0.65}
         disabled={item.disabled}
         onPress={() => {
           if (!item.disabled) {
@@ -79,45 +73,50 @@ const RequestCertificateScreen = () => {
             item.disabled && styles.cardDisabled,
           ]}
         >
-          {isSelected && <View style={styles.cardAccent} />}
-
-          <View
-            style={[
-              styles.iconContainer,
-              isSelected && styles.iconContainerSelected,
-            ]}
-          >
-            <Image
-              source={getCertificateIcon(item.id)}
-              style={styles.icon}
-              resizeMode="contain"
-            />
-          </View>
-
-          <View style={styles.textGroup}>
-            <Text
+          <View style={styles.cardContent}>
+            <View
               style={[
-                styles.cardTitle,
-                isSelected && styles.cardTitleSelected,
+                styles.iconContainer,
+                isSelected && styles.iconContainerSelected,
               ]}
-              numberOfLines={2}
             >
-              {item.title}
-            </Text>
+              <Image
+                source={getCertificateIcon(item.id)}
+                style={styles.icon}
+                resizeMode="contain"
+              />
+            </View>
 
-            {!item.disabled ? (
+            <View style={styles.textGroup}>
               <Text
-                style={styles.cardDescription}
+                style={[
+                  styles.cardTitle,
+                  isSelected && styles.cardTitleSelected,
+                ]}
                 numberOfLines={2}
               >
-                {item.description}
+                {item.title}
               </Text>
-            ) : (
-              <Text style={styles.comingSoon}>Coming soon</Text>
-            )}
+
+              {!item.disabled ? (
+                <Text style={styles.cardDescription} numberOfLines={3}>
+                  {item.description}
+                </Text>
+              ) : (
+                <View style={styles.comingSoonBadge}>
+                  <Text style={styles.comingSoonText}>Coming soon</Text>
+                </View>
+              )}
+            </View>
           </View>
 
-          {isSelected && <CardCheck />}
+          {isSelected && (
+            <View style={styles.selectedIndicator}>
+              <View style={styles.checkCircle}>
+                <Feather name="check" size={11} color={COLORS.white} />
+              </View>
+            </View>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -133,16 +132,19 @@ const RequestCertificateScreen = () => {
         >
           <Feather name="chevron-left" size={24} color={COLORS.heading} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Request Certificate</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Request Certificate</Text>
+          <Text style={styles.headerSubtitle}>
+            Select a document to get started
+          </Text>
+        </View>
       </View>
 
       <ScreenContainer
         scrollable
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.grid}>
-          {certificateTypes.map(renderItem)}
-        </View>
+        <View style={styles.grid}>{certificateTypes.map(renderItem)}</View>
       </ScreenContainer>
     </SafeAreaView>
   );
@@ -151,25 +153,41 @@ const RequestCertificateScreen = () => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.background,
   },
   header: {
-    paddingTop: SPACING.xxl,
+    paddingTop: SPACING.lg,
     paddingHorizontal: SPACING.xl,
-    paddingBottom: SPACING.md,
+    paddingBottom: SPACING.xl,
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
+    backgroundColor: COLORS.white,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
   },
   backButton: {
-    paddingRight: SPACING.xs,
+    paddingRight: SPACING.sm,
+    paddingTop: 2,
+  },
+  headerContent: {
+    flex: 1,
   },
   headerTitle: {
-    fontSize: FONT_SIZE.h18,
-    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.h20,
+    fontFamily: FONT_FAMILY.bold,
     color: COLORS.heading,
+    letterSpacing: -0.3,
+    marginBottom: 2,
+  },
+  headerSubtitle: {
+    fontSize: FONT_SIZE.body14,
+    fontFamily: FONT_FAMILY.regular,
+    color: COLORS.paragraph,
+    lineHeight: 20,
   },
   scrollContent: {
-    paddingBottom: SPACING.xxxl,
+    paddingTop: SPACING.xl,
+    paddingBottom: SPACING.giant,
   },
   grid: {
     flexDirection: "row",
@@ -181,88 +199,94 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   card: {
-    borderRadius: 16,
+    borderRadius: 14,
     backgroundColor: COLORS.white,
-    padding: SPACING.xl,
-    minHeight: 180,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
-    overflow: "hidden",
+    padding: SPACING.lg,
+    minHeight: 170,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    position: "relative",
   },
   cardSelected: {
-    borderWidth: 1,
     borderColor: COLORS.primary,
-    backgroundColor: `${COLORS.primary}03`,
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 5,
+    backgroundColor: COLORS.white,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   cardDisabled: {
-    opacity: 0.35,
+    opacity: 0.4,
   },
-  cardAccent: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    backgroundColor: COLORS.primary,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+  cardContent: {
+    flex: 1,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     backgroundColor: COLORS.inputBackground,
     justifyContent: "center",
     alignItems: "center",
+    marginBottom: SPACING.md,
   },
   iconContainerSelected: {
-    backgroundColor: `${COLORS.primary}12`,
+    backgroundColor: `${COLORS.primary}10`,
   },
   icon: {
-    width: 24,
-    height: 24,
+    width: 26,
+    height: 26,
   },
   textGroup: {
-    marginTop: SPACING.lg,
     flex: 1,
   },
   cardTitle: {
     fontFamily: FONT_FAMILY.semibold,
-    fontSize: FONT_SIZE.h16,
+    fontSize: FONT_SIZE.h15,
     color: COLORS.heading,
-    lineHeight: 22,
+    lineHeight: 21,
+    marginBottom: SPACING.xs,
   },
   cardTitleSelected: {
     color: COLORS.primary,
   },
   cardDescription: {
-    marginTop: SPACING.xs,
     fontFamily: FONT_FAMILY.regular,
     fontSize: FONT_SIZE.body12,
     color: COLORS.paragraph,
     lineHeight: 17,
   },
-  comingSoon: {
-    marginTop: SPACING.xs,
+  comingSoonBadge: {
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.inputBackground,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs - 1,
+    borderRadius: 6,
+    marginTop: SPACING.xs - 2,
+  },
+  comingSoonText: {
     fontFamily: FONT_FAMILY.medium,
-    fontSize: FONT_SIZE.body12,
+    fontSize: FONT_SIZE.body11,
     color: COLORS.placeholder,
   },
+  selectedIndicator: {
+    position: "absolute",
+    top: SPACING.md,
+    right: SPACING.md,
+  },
   checkCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    alignSelf: "flex-end",
-    marginTop: SPACING.md,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
 

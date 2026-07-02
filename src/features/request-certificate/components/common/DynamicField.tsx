@@ -17,13 +17,14 @@ export const DynamicField: React.FC<DynamicFieldProps> = ({
   onChangeText,
   disabled = false,
 }) => (
-  <View style={{ marginBottom: SPACING.xl }}>
+  <View style={{ marginBottom: SPACING.md }}>
     <Text
       style={{
-        fontSize: FONT_SIZE.body14,
+        fontSize: FONT_SIZE.body13,
         fontFamily: FONT_FAMILY.medium,
         color: COLORS.heading,
-        marginBottom: SPACING.sm,
+        marginBottom: SPACING.xs,
+        letterSpacing: -0.1,
       }}
     >
       {label}
@@ -37,10 +38,10 @@ export const DynamicField: React.FC<DynamicFieldProps> = ({
       style={{
         borderWidth: 1,
         borderColor: COLORS.border,
-        borderRadius: 12,
-        paddingHorizontal: SPACING.lg,
+        borderRadius: 10,
+        paddingHorizontal: SPACING.md,
         paddingVertical: SPACING.md,
-        fontSize: FONT_SIZE.body16,
+        fontSize: FONT_SIZE.body14,
         fontFamily: FONT_FAMILY.regular,
         color: COLORS.heading,
         backgroundColor: disabled ? COLORS.inputBackground : COLORS.white,

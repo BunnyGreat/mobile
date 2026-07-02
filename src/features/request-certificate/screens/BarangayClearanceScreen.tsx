@@ -18,11 +18,12 @@ const SectionBlock: React.FC<{
   title: string;
   subtitle?: string;
   children: React.ReactNode;
-}> = ({ icon, title, subtitle, children }) => (
-  <View style={styles.sectionBlock}>
+  isFirst?: boolean;
+}> = ({ icon, title, subtitle, children, isFirst = false }) => (
+  <View style={[styles.sectionBlock, isFirst && styles.sectionBlockFirst]}>
     <View style={styles.sectionHeader}>
       <View style={styles.sectionIconBadge}>
-        <Feather name={icon} size={15} color={COLORS.primary} />
+        <Feather name={icon} size={16} color={COLORS.primary} />
       </View>
       <View style={styles.sectionTitleGroup}>
         <Text style={styles.sectionTitle}>{title}</Text>
@@ -31,7 +32,7 @@ const SectionBlock: React.FC<{
         ) : null}
       </View>
     </View>
-    {children}
+    <View style={styles.sectionContent}>{children}</View>
   </View>
 );
 
@@ -82,21 +83,22 @@ const BarangayClearanceScreen = () => {
       <ScreenContainer scrollable contentContainerStyle={styles.scrollContent}>
         <SectionBlock
           icon="user"
-          title="Resident Information"
-          subtitle="Pre-filled from your registered profile."
+          title="Applicant Information"
+          subtitle="Pre-filled from your registered profile"
+          isFirst={true}
         >
           <InfoRow label="Full Name" value={fullName} />
-          <InfoRow label="Address" value={address} />
+          <InfoRow label="Complete Address" value={address} />
           <View style={styles.row}>
             <View style={styles.rowHalf}>
               <InfoRow
-                label="Birthdate"
+                label="Date of Birth"
                 value={profile?.personalInformation.dateOfBirth ?? ""}
               />
             </View>
             <View style={styles.rowHalf}>
               <InfoRow
-                label="Birthplace"
+                label="Place of Birth"
                 value={profile?.personalInformation.birthplace ?? ""}
               />
             </View>
@@ -107,12 +109,10 @@ const BarangayClearanceScreen = () => {
           />
         </SectionBlock>
 
-        <View style={styles.divider} />
-
         <SectionBlock
-          icon="edit-3"
+          icon="file-text"
           title="Purpose of Request"
-          subtitle="Select a common purpose or write your own."
+          subtitle="What will you use this clearance for?"
         >
           <View style={styles.purposeChips}>
             {CLEARANCE_PURPOSES.map((purposeOption) => {
@@ -138,20 +138,18 @@ const BarangayClearanceScreen = () => {
           </View>
 
           <AppInput
-            label="Or type your own purpose"
+            label="Custom Purpose"
             value={purpose}
             onChangeText={setPurpose}
             multiline
-            placeholder="I will use this Barangay Clearance for..."
+            placeholder="Enter the purpose of this request..."
             error={errors.purpose}
             containerStyle={{ marginBottom: 0 }}
             inputStyle={styles.purposeInput}
           />
         </SectionBlock>
 
-        <View style={styles.divider} />
-
-        <SectionBlock icon="clipboard" title="Requirements">
+        <SectionBlock icon="check-circle" title="Required Documents">
           {CLEARANCE_REQUIREMENTS.length ? (
             <View style={styles.requirementsList}>
               {CLEARANCE_REQUIREMENTS.map((requirement, index) => (
@@ -167,36 +165,39 @@ const BarangayClearanceScreen = () => {
             </View>
           ) : (
             <View style={styles.emptyRequirements}>
+              <Feather name="check-circle" size={24} color={COLORS.success} style={{ marginBottom: SPACING.sm }} />
               <Text style={styles.emptyRequirementsText}>
-                No requirements available.
+                No additional documents required
               </Text>
             </View>
           )}
         </SectionBlock>
 
-        <AppButton
-          label="Submit Request"
-          onPress={async () => {
-            const requestId = await submitRequest();
-            if (!requestId) {
-              return;
-            }
+        <View style={styles.submitSection}>
+          <AppButton
+            label="Submit Request"
+            onPress={async () => {
+              const requestId = await submitRequest();
+              if (!requestId) {
+                return;
+              }
 
-            Alert.alert(
-              "Request Submitted",
-              "Your Barangay Clearance request has been submitted successfully.",
-              [
-                {
-                  text: "OK",
-                  onPress: () =>
-                    navigation.navigate("MainTabs", { screen: "Status" }),
-                },
-              ],
-            );
-          }}
-          disabled={isSubmitting}
-          size="lg"
-        />
+              Alert.alert(
+                "Request Submitted",
+                "Your Barangay Clearance request has been submitted successfully.",
+                [
+                  {
+                    text: "OK",
+                    onPress: () =>
+                      navigation.navigate("MainTabs", { screen: "Status" }),
+                  },
+                ],
+              );
+            }}
+            disabled={isSubmitting}
+            size="lg"
+          />
+        </View>
       </ScreenContainer>
     </SafeAreaView>
   );
