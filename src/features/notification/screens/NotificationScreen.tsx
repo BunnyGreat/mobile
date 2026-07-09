@@ -1,6 +1,8 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { RootStackNavigationProp } from "../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import NotificationList from "../components/NotificationList";
 import { useNotifications } from "../hooks/useNotifications";
@@ -9,14 +11,23 @@ import { useMarkAsRead } from "../hooks/useMarkAsRead";
 import type { Notification } from "../types/notification.types";
 
 const NotificationScreen: React.FC = () => {
+  const navigation = useNavigation<RootStackNavigationProp>();
   const { notifications, loading, refreshing } = useNotifications();
   const refresh = useRefreshNotifications();
   const markAsRead = useMarkAsRead();
+
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
 
   const handleNotificationPress = async (notification: Notification) => {
     if (!notification.isRead) {
       await markAsRead(notification.notificationId);
     }
+
+    navigation.navigate("AnnouncementScreen");
   };
 
   return (

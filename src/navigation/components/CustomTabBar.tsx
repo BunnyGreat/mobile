@@ -5,6 +5,7 @@ import { Text } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { COLORS, SPACING, FONT_SIZE, FONT_FAMILY, SHADOWS } from "../..//theme";
+import { useNotificationStore } from "../../features/notification/store/notification.store";
 
 const digitalIdIcon = require("../../../assets/icons/digital-id.png");
 
@@ -27,6 +28,9 @@ const TAB_ITEMS: TabItem[] = [
 ];
 
 const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
+  const unreadCount = useNotificationStore((state) => state.unreadCount);
+  const hasUnreadNotifications = unreadCount > 0;
+
   return (
     <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
       <View style={styles.container}>
@@ -76,7 +80,13 @@ const CustomTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
                 {isDigitalTab ? (
                   <Image source={digitalIdIcon} style={styles.digitalIdIcon} />
                 ) : (
-                  <Feather name={tabItem.icon!} size={22} color={iconColor} />
+                  <View style={styles.iconContainer}>
+                    <Feather name={tabItem.icon!} size={22} color={iconColor} />
+                    {tabItem.name === "Notifications" &&
+                    hasUnreadNotifications ? (
+                      <View style={styles.badge} />
+                    ) : null}
+                  </View>
                 )}
               </View>
               <Text
@@ -128,6 +138,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 24,
     height: 24,
+  },
+  iconContainer: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+    backgroundColor: "#EF4444",
+    borderWidth: 2,
+    borderColor: COLORS.white,
   },
   centerButton: {
     width: 56,

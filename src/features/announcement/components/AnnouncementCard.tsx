@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import { formatAnnouncementDate } from "../utils/formatAnnouncementDate";
-import { getAnnouncementCategoryLabel } from "../utils/announcementCategory";
+import { getAnnouncementCategoryStyle } from "../utils/announcementCategory";
 import type { Announcement } from "../types/announcement.types";
 
 interface AnnouncementCardProps {
@@ -15,16 +15,21 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
   announcement,
   onPress,
 }) => {
-  const category = getAnnouncementCategoryLabel(announcement.category);
+  const categoryStyle = getAnnouncementCategoryStyle(announcement.category);
+  const CategoryIcon = categoryStyle.icon;
 
   return (
     <TouchableOpacity
-      activeOpacity={0.85}
+      activeOpacity={0.9}
       onPress={() => onPress?.(announcement)}
       style={styles.card}
     >
-      {/* Left side - Image or Icon */}
-      <View style={styles.imageWrapper}>
+      <View
+        style={[
+          styles.imageWrapper,
+          { backgroundColor: categoryStyle.backgroundColor },
+        ]}
+      >
         {announcement.bannerUrl ? (
           <Image
             source={{ uri: announcement.bannerUrl }}
@@ -33,29 +38,31 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
           />
         ) : (
           <View style={styles.iconContainer}>
-            <Feather name="bell" size={28} color={COLORS.primary} />
+            <CategoryIcon size={28} color={categoryStyle.textColor} />
           </View>
         )}
       </View>
 
-      {/* Right side - Content */}
       <View style={styles.content}>
-        {/* Category Badge */}
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{category}</Text>
+        <View
+          style={[
+            styles.categoryBadge,
+            { backgroundColor: categoryStyle.backgroundColor },
+          ]}
+        >
+          <Text
+            style={[styles.categoryText, { color: categoryStyle.textColor }]}
+          >
+            {categoryStyle.label}
+          </Text>
         </View>
 
-        {/* Title */}
         <Text style={styles.title} numberOfLines={2}>
           {announcement.title}
         </Text>
 
-        {/* Description */}
-        <Text style={styles.description} numberOfLines={2}>
-          {announcement.description}
-        </Text>
+        <Text style={styles.description}>{announcement.description}</Text>
 
-        {/* Date */}
         <View style={styles.dateRow}>
           <Feather
             name="clock"
@@ -64,7 +71,11 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
             style={styles.dateIcon}
           />
           <Text style={styles.dateText}>
-            {formatAnnouncementDate(announcement.createdAt)}
+            {formatAnnouncementDate(
+              announcement.publishedAt ??
+                announcement.publishDate ??
+                announcement.createdAt,
+            )}
           </Text>
         </View>
       </View>
@@ -75,22 +86,23 @@ export const AnnouncementCard: React.FC<AnnouncementCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
+    alignItems: "flex-start",
     backgroundColor: COLORS.white,
-    borderRadius: 16,
+    borderRadius: 18,
     padding: SPACING.md,
     marginBottom: SPACING.md,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
     borderWidth: 1,
     borderColor: COLORS.border,
   },
   imageWrapper: {
-    width: 88,
-    height: 88,
-    borderRadius: 12,
+    width: 92,
+    height: 92,
+    borderRadius: 14,
     overflow: "hidden",
     marginRight: SPACING.md,
     backgroundColor: "#F1F5F9",
@@ -107,39 +119,36 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: "space-between",
+    gap: SPACING.xs,
   },
   categoryBadge: {
     alignSelf: "flex-start",
-    backgroundColor: "#EEF2FF",
     paddingHorizontal: SPACING.sm,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginBottom: SPACING.xs,
+    paddingVertical: 6,
+    borderRadius: 999,
+    marginBottom: 2,
   },
   categoryText: {
-    fontFamily: FONT_FAMILY.medium,
+    fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body12,
-    color: COLORS.primary,
+    letterSpacing: 0.1,
   },
   title: {
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body16,
     color: COLORS.heading,
     lineHeight: 22,
-    marginBottom: 4,
   },
   description: {
     fontFamily: FONT_FAMILY.regular,
-    fontSize: FONT_SIZE.body12,
+    fontSize: FONT_SIZE.body13,
     color: COLORS.paragraph,
-    lineHeight: 18,
-    marginBottom: SPACING.xs,
+    lineHeight: 20,
   },
   dateRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: "auto",
+    marginTop: SPACING.xs,
   },
   dateIcon: {
     marginRight: 4,

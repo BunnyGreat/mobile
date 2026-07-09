@@ -1,13 +1,12 @@
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
 import {
   ActivityIndicator,
-  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import AnnouncementCategoryTabs from "../components/AnnouncementCategoryTabs";
@@ -23,7 +22,14 @@ const AnnouncementScreen: React.FC = () => {
     activeCategory,
     setActiveCategory,
     refreshAnnouncements,
+    loadAnnouncements,
   } = useAnnouncements();
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadAnnouncements();
+    }, [loadAnnouncements]),
+  );
 
   const filteredAnnouncements = useMemo(() => {
     const now = new Date();

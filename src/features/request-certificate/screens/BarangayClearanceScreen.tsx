@@ -165,7 +165,12 @@ const BarangayClearanceScreen = () => {
             </View>
           ) : (
             <View style={styles.emptyRequirements}>
-              <Feather name="check-circle" size={24} color={COLORS.success} style={{ marginBottom: SPACING.sm }} />
+              <Feather
+                name="check-circle"
+                size={24}
+                color={COLORS.success}
+                style={{ marginBottom: SPACING.sm }}
+              />
               <Text style={styles.emptyRequirementsText}>
                 No additional documents required
               </Text>
@@ -233,6 +238,12 @@ const styles = StyleSheet.create({
   },
   sectionBlock: {
     marginBottom: SPACING.xxl + 4,
+  },
+  sectionBlockFirst: {
+    marginTop: SPACING.sm,
+  },
+  sectionContent: {
+    gap: SPACING.md,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -345,6 +356,9 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.regular,
     color: COLORS.placeholder,
     textAlign: "center",
+  },
+  submitSection: {
+    marginTop: SPACING.xl,
   },
 });
 

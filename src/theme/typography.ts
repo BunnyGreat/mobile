@@ -9,10 +9,13 @@ export const FONT_SIZE = {
   h14: 14,
   h12: 12,
   h10: 10,
+  h15: 15,
 
   body16: 16,
   body14: 14,
   body12: 12,
+  body13: 13,
+  body11: 11,
 } as const;
 
 export const FONT_FAMILY = {

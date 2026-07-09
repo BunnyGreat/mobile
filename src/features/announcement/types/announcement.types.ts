@@ -6,9 +6,15 @@ export interface Announcement {
   description: string;
   bannerUrl?: string | null;
   category: string;
+  status: string;
+  publishDate?: string | null;
+  publishedAt?: string | null;
   createdAt: string;
   updatedAt: string;
   isActive: boolean;
+  createdBy?: string | null;
+  createdById?: string | null;
+  staffRole?: string | null;
 }
 
 export interface AnnouncementStoreState {

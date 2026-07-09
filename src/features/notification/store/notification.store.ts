@@ -1,12 +1,14 @@
 import { create } from "zustand";
 import {
-  fetchNotifications,
+  fetchNotifications as fetchNotificationDocs,
   getCachedNotifications,
   markNotificationAsRead,
   subscribeToNotifications,
 } from "../services/notification.service";
-import type { Notification, NotificationStoreState } from "../types/notification.types";
-import { auth } from "../../../services/firebase/firebase";
+import type { NotificationStoreState } from "../types/notification.types";
+
+const countUnread = (notifications: NotificationStoreState["notifications"]) =>
+  notifications.filter((notification) => !notification.isRead).length;
 
 export const useNotificationStore = create<NotificationStoreState>((set, get) => ({
   notifications: [],
@@ -21,23 +23,22 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     try {
       const cached = await getCachedNotifications();
       if (cached.length > 0) {
-        const unreadCount = cached.filter((n) => !n.isRead).length;
-        set({ notifications: cached, unreadCount, loading: false });
+        set({ notifications: cached, unreadCount: countUnread(cached), loading: false });
       } else {
         set({ notifications: [], unreadCount: 0, loading: false });
       }
 
-      const fresh = await fetchNotifications();
-      const unreadCount = fresh.filter((n) => !n.isRead).length;
-      set({ notifications: fresh, unreadCount, loading: false, error: null });
+      const fresh = await fetchNotificationDocs();
+      set({ notifications: fresh, unreadCount: countUnread(fresh), loading: false, error: null });
     } catch (error) {
       const cached = await getCachedNotifications();
-      const unreadCount = cached.filter((n) => !n.isRead).length;
+      const message = error instanceof Error ? error.message : "Unable to load notifications.";
+
       set({
         notifications: cached,
-        unreadCount,
+        unreadCount: countUnread(cached),
         loading: false,
-        error: error instanceof Error ? error.message : "Unable to load notifications.",
+        error: message,
       });
     }
   },
@@ -46,32 +47,26 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
     set({ refreshing: true, error: null });
 
     try {
-      const fresh = await fetchNotifications();
-      const unreadCount = fresh.filter((n) => !n.isRead).length;
-      set({ notifications: fresh, unreadCount, refreshing: false, error: null });
+      const fresh = await fetchNotificationDocs();
+      set({ notifications: fresh, unreadCount: countUnread(fresh), refreshing: false, error: null });
     } catch (error) {
       const cached = await getCachedNotifications();
-      const unreadCount = cached.filter((n) => !n.isRead).length;
+      const message = error instanceof Error ? error.message : "Unable to refresh notifications.";
+
       set({
         notifications: cached,
-        unreadCount,
+        unreadCount: countUnread(cached),
         refreshing: false,
-        error: error instanceof Error ? error.message : "Unable to refresh notifications.",
+        error: message,
       });
     }
   },
 
   subscribeToNotifications: () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser?.uid) {
-      return () => {};
-    }
-
     const unsubscribe = subscribeToNotifications(
-      currentUser.uid,
+      "",
       (notifications) => {
-        const unreadCount = notifications.filter((n) => !n.isRead).length;
-        set({ notifications, unreadCount, error: null });
+        set({ notifications, unreadCount: countUnread(notifications), error: null });
       },
       (error) => {
         set({ error: error.message });
@@ -86,12 +81,11 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       await markNotificationAsRead(notificationId);
 
       const state = get();
-      const updated = state.notifications.map((n) =>
-        n.notificationId === notificationId ? { ...n, isRead: true } : n,
+      const updated = state.notifications.map((notification) =>
+        notification.notificationId === notificationId ? { ...notification, isRead: true } : notification,
       );
-      const unreadCount = updated.filter((n) => !n.isRead).length;
 
-      set({ notifications: updated, unreadCount });
+      set({ notifications: updated, unreadCount: countUnread(updated) });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to mark as read.";
       set({ error: message });
