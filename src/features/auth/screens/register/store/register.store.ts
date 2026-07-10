@@ -37,7 +37,7 @@ export interface RegistrationStore {
     residenceInformation: RegistrationResidenceInformation | null;
     documents: RegistrationDocuments | null;
   };
-  submitRegistration: (documents: RegistrationDocuments) => Promise<boolean>;
+  submitRegistration: (documents: RegistrationDocuments) => Promise<{ success: boolean; error?: string }>;
   clearRegistration: () => void;
 }
 
@@ -123,7 +123,7 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
 
   submitRegistration: async (documents) => {
     if (get().isLoading) {
-      return false;
+      return { success: false, error: "Registration already in progress." };
     }
 
     try {
@@ -154,13 +154,16 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
       const result = await registerUser(formData, email, password);
 
       if (!result.success) {
-        return false;
+        return { success: false, error: result.error };
       }
 
       set({ referenceId: result.referenceId });
-      return true;
+      return { success: true };
     } catch (error) {
-      return false;
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown registration error",
+      };
     } finally {
       set({ isLoading: false });
     }

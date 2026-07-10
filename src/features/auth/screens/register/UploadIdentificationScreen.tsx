@@ -34,13 +34,14 @@ const UploadIdentificationScreen: React.FC = () => {
         "Registration Error",
         "Incomplete registration data. Please complete all registration steps.",
       );
+      isSubmittingRef.current = false;
       return;
     }
 
     saveDocuments(documents);
 
-    const success = await submitRegistration(documents);
-    if (success) {
+    const result = await submitRegistration(documents);
+    if (result.success) {
       navigation.replace("RegistrationSuccess");
       isSubmittingRef.current = false;
       return;
@@ -48,7 +49,7 @@ const UploadIdentificationScreen: React.FC = () => {
 
     Alert.alert(
       "Registration Failed",
-      "Unable to create account. Please try again.",
+      result.error || "Unable to create account. Please try again.",
     );
     isSubmittingRef.current = false;
   };

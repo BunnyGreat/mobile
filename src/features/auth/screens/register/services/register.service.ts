@@ -54,7 +54,7 @@ export const sendRegistrationOtpEmail = async (
     throw new Error("Resend API key is not configured.");
   }
 
-  const resendSender = "Barangay San Isidro <onboarding@resend.dev>"; // TODO: Replace with noreply@barangaysanisidro.ph in production
+  const resendSender = "Barangay San Isidro <noreply@barangay-san-isidro.help>"; // TODO: Replace with noreply@barangaysanisidro.ph in production
 
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -158,6 +158,23 @@ export const createUserDocument = async (
   });
 };
 
+const logRegistrationFailure = (
+  context: string,
+  error: unknown,
+  file: string,
+  fn: string,
+) => {
+  if (__DEV__) {
+    console.error(`[REGISTER] ${context}`, {
+      file,
+      function: fn,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      raw: error,
+    });
+  }
+};
+
 export const registerUser = async (
   formData: RegistrationFormData,
   email: string,
@@ -166,19 +183,9 @@ export const registerUser = async (
   | { success: true; uid: string; referenceId: string }
   | { success: false; error: string }
 > => {
+  let credential: UserCredential | null = null;
+
   try {
-    const credential: UserCredential = await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password,
-    );
-
-    if (!credential.user?.uid) {
-      throw new Error("Firebase Auth did not return a user ID.");
-    }
-
-    const uid = credential.user.uid;
-
     if (!formData.documents?.frontIdUri || !formData.documents?.backIdUri) {
       throw new Error("Identification documents are required.");
     }
@@ -187,63 +194,59 @@ export const registerUser = async (
       throw new Error("Profile photo is required.");
     }
 
-    try {
-      // Ensure Supabase user exists and sign in so uploads can use RLS
-      const { supabaseCreateOrSignIn } = await import(
-        "../../../../../services/supabase/auth.service"
-      );
+    credential = await createUserWithEmailAndPassword(auth, email, password);
 
-      const supabaseAuthResult = await supabaseCreateOrSignIn(email, password);
-      if (supabaseAuthResult?.error) {
-        throw supabaseAuthResult.error;
-      }
-
-      const profilePhotoUpload = await uploadImage(
-        formData.personalInformation.profilePhotoUri,
-        uid,
-        "profile_photo",
-        "profile.jpg",
-      );
-
-      const frontIdUpload = await uploadIdentificationImage(
-        formData.documents.frontIdUri,
-        uid,
-        "identification",
-        "front_id.jpg",
-      );
-
-      const backIdUpload = await uploadIdentificationImage(
-        formData.documents.backIdUri,
-        uid,
-        "identification",
-        "back_id.jpg",
-      );
-
-      const referenceId = generateReferenceId();
-      await createUserDocument(
-        uid,
-        email,
-        formData.personalInformation,
-        formData.residenceInformation,
-        profilePhotoUpload.path,
-        frontIdUpload.path,
-        backIdUpload.path,
-        referenceId,
-      );
-
-      return { success: true, uid, referenceId };
-    } catch (registrationError: unknown) {
-      // Log the original registration error for debugging before rollback
-      console.error("[REGISTER ERROR] during uploads/createUserDocument", registrationError);
-      if (credential.user) {
-        try {
-          await deleteUser(credential.user);
-        } catch {
-          // Rollback failure is non-fatal; preserve the original registration error below.
-        }
-      }
-      throw registrationError;
+    if (!credential.user?.uid) {
+      throw new Error("Firebase Auth did not return a user ID.");
     }
+
+    const uid = credential.user.uid;
+
+    const { supabaseCreateOrSignIn } = await import(
+      "../../../../../services/supabase/auth.service"
+    );
+
+    const supabaseAuthResult = await supabaseCreateOrSignIn(email, password);
+    if (supabaseAuthResult?.error) {
+      throw supabaseAuthResult.error instanceof Error
+        ? supabaseAuthResult.error
+        : new Error(String(supabaseAuthResult.error));
+    }
+
+    const profilePhotoUpload = await uploadImage(
+      formData.personalInformation.profilePhotoUri,
+      uid,
+      "profile_photo",
+      "profile.jpg",
+    );
+
+    const frontIdUpload = await uploadIdentificationImage(
+      formData.documents.frontIdUri,
+      uid,
+      "identification",
+      "front_id.jpg",
+    );
+
+    const backIdUpload = await uploadIdentificationImage(
+      formData.documents.backIdUri,
+      uid,
+      "identification",
+      "back_id.jpg",
+    );
+
+    const referenceId = generateReferenceId();
+    await createUserDocument(
+      uid,
+      email,
+      formData.personalInformation,
+      formData.residenceInformation,
+      profilePhotoUpload.path,
+      frontIdUpload.path,
+      backIdUpload.path,
+      referenceId,
+    );
+
+    return { success: true, uid, referenceId };
   } catch (error: unknown) {
     if (
       error instanceof FirebaseError &&
@@ -254,6 +257,26 @@ export const registerUser = async (
         error:
           "This email is already registered. Please use another email address or log in instead.",
       };
+    }
+
+    logRegistrationFailure(
+      "Registration flow failed",
+      error,
+      "src/features/auth/screens/register/services/register.service.ts",
+      "registerUser",
+    );
+
+    if (credential?.user) {
+      try {
+        await deleteUser(credential.user);
+      } catch (rollbackError) {
+        logRegistrationFailure(
+          "Rollback failed while deleting Firebase user",
+          rollbackError,
+          "src/features/auth/screens/register/services/register.service.ts",
+          "registerUser",
+        );
+      }
     }
 
     const message =

@@ -6,7 +6,7 @@ import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 const DigitalIDScreen: React.FC = () => (
   <ScreenContainer style={styles.container}>
     <View style={styles.content}>
-      <Text style={styles.title}>Digital ID Screen</Text>
+      <Text style={styles.title}>Under Development</Text>
     </View>
   </ScreenContainer>
 );
