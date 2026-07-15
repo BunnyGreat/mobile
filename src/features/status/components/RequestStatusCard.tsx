@@ -1,12 +1,18 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING, SHADOWS } from "../../../theme";
+import {
+  COLORS,
+  FONT_FAMILY,
+  FONT_SIZE,
+  SPACING,
+  SHADOWS,
+} from "../../../theme";
 import StatusTimeline from "./StatusTimeline";
 import { getStatusLabel } from "../utils/statusLabel";
 import { getStatusColor } from "../utils/statusColor";
-import { formatDateShort } from "../../../utils/dateFormatter";
-import type { UnifiedRequest } from "../types/status.types";
+import { formatDateLong, formatDateShort } from "../../../utils/dateFormatter";
+import type { AppointmentRequest, UnifiedRequest } from "../types/status.types";
 
 interface RequestStatusCardProps {
   request: UnifiedRequest;
@@ -18,8 +24,11 @@ export const RequestStatusCard: React.FC<RequestStatusCardProps> = ({
   const [expanded, setExpanded] = useState(false);
   const statusColor = getStatusColor(request.status);
 
-  // Generate a short reference number from the ID
   const referenceNumber = request.id.slice(-8).toUpperCase();
+  const isAppointment = request.type === "appointment";
+  const appointment = isAppointment
+    ? (request.raw as AppointmentRequest)
+    : null;
 
   return (
     <View style={styles.card}>
@@ -35,12 +44,16 @@ export const RequestStatusCard: React.FC<RequestStatusCardProps> = ({
           </View>
           <View style={styles.headerInfo}>
             <Text style={styles.requestType}>
-              {request.type === "certificate" ? "Certificate Request" : "Appointment Request"}
+              {request.type === "certificate"
+                ? "Certificate Request"
+                : "Appointment Request"}
             </Text>
             <Text style={styles.referenceNumber}>#{referenceNumber}</Text>
           </View>
         </View>
-        <View style={[styles.statusPill, { backgroundColor: statusColor + "15" }]}>
+        <View
+          style={[styles.statusPill, { backgroundColor: statusColor + "15" }]}
+        >
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
           <Text style={[styles.statusText, { color: statusColor }]}>
             {getStatusLabel(request.status)}
@@ -57,6 +70,13 @@ export const RequestStatusCard: React.FC<RequestStatusCardProps> = ({
         <Text style={styles.title} numberOfLines={2}>
           {request.title}
         </Text>
+
+        {isAppointment && appointment && (
+          <View style={styles.idRow}>
+            <Text style={styles.idLabel}>Appointment ID</Text>
+            <Text style={styles.idValue}>{appointment.appointmentId}</Text>
+          </View>
+        )}
 
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
@@ -86,6 +106,40 @@ export const RequestStatusCard: React.FC<RequestStatusCardProps> = ({
             <Text style={styles.dividerText}>TRACKING PROGRESS</Text>
             <View style={styles.dividerLine} />
           </View>
+
+          {isAppointment && appointment && (
+            <View style={styles.detailCard}>
+              {(appointment.hasRescheduleNotification ||
+                appointment.status === "rescheduled") &&
+                (appointment.displayAppointmentDate ||
+                  appointment.displayAppointmentTime) && (
+                  <>
+                    <View style={styles.detailDivider} />
+                    <Text style={styles.detailTitle}>New Schedule</Text>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Date</Text>
+                      <Text style={styles.detailValue}>
+                        {formatDateLong(
+                          appointment.displayAppointmentDate ||
+                            appointment.rescheduledDate ||
+                            appointment.appointmentDate,
+                        )}
+                      </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Time</Text>
+                      <Text style={styles.detailValue}>
+                        {appointment.displayAppointmentTime ||
+                          appointment.rescheduledTime ||
+                          appointment.appointmentTime ||
+                          "Pending"}
+                      </Text>
+                    </View>
+                  </>
+                )}
+            </View>
+          )}
+
           <StatusTimeline request={request} />
         </View>
       )}
@@ -160,8 +214,25 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.h16,
     color: COLORS.heading,
-    marginBottom: SPACING.md,
+    marginBottom: SPACING.sm,
     lineHeight: 24,
+  },
+  idRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.md,
+    paddingVertical: SPACING.xs,
+  },
+  idLabel: {
+    fontFamily: FONT_FAMILY.medium,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.placeholder,
+  },
+  idValue: {
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.primary,
   },
   metaRow: {
     flexDirection: "row",
@@ -191,6 +262,43 @@ const styles = StyleSheet.create({
   timelineSection: {
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
+  },
+  detailCard: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
+  detailDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: SPACING.xs,
+  },
+  detailTitle: {
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.primary,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  detailRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: SPACING.sm,
+  },
+  detailLabel: {
+    fontFamily: FONT_FAMILY.medium,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.placeholder,
+    flex: 1,
+  },
+  detailValue: {
+    fontFamily: FONT_FAMILY.medium,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.heading,
+    flex: 1,
+    textAlign: "right",
   },
   timelineDivider: {
     flexDirection: "row",

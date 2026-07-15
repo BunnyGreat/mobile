@@ -1,10 +1,11 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { FilterType } from "../features/status/types/status.types";
 
 export type MainTabParamList = {
   Home: undefined;
   Notifications: undefined;
   DigitalID: undefined;
-  Status: undefined;
+  Status: { filter?: FilterType } | undefined;
   Settings: undefined;
 };
 

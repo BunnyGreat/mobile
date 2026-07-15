@@ -1,6 +1,8 @@
 import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../../../services/firebase/firebase";
+import { generateReadableId } from "../../../services/idGenerator";
 import { getProfile } from "../../profile/services/profile.service";
+import { createResidentNotification } from "../../notification/services/notification.service";
 import type { AppointmentFormValues, AppointmentRecord } from "../types/appointment.types";
 import { validateAppointment } from "../utils/appointmentValidation";
 import { uploadAppointmentDocument } from "./appointmentDocument.service";
@@ -44,6 +46,12 @@ export const createAppointment = async (
     throw new Error("Unable to upload supporting document. Please try again.");
   }
 
+  const appointmentId = await generateReadableId({
+    prefix: "APT",
+    collectionName: "appointments",
+    fieldName: "appointmentId",
+  });
+
   const payload: Omit<AppointmentRecord, "appointmentId"> = {
     uid: currentUser.uid,
     fullName: profile.fullName,
@@ -57,19 +65,28 @@ export const createAppointment = async (
     supportingDocumentName: values.supportingDocumentName ?? "",
     supportingDocumentUrl,
     supportingDocumentPath,
-    status: "pending",
+    status: "submitted",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
-  const docRef = await addDoc(collection(db, "appointments"), {
+  await addDoc(collection(db, "appointments"), {
     ...payload,
+    appointmentId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
 
+  await createResidentNotification({
+    uid: currentUser.uid,
+    title: "Appointment Submitted",
+    message: "Your appointment request has been submitted successfully.",
+    type: "appointment",
+    referenceId: appointmentId,
+  });
+
   return {
-    appointmentId: docRef.id,
+    appointmentId,
     ...payload,
   };
 };

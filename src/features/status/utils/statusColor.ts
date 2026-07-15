@@ -5,8 +5,12 @@ export const getStatusColor = (status: RequestStatus): string => {
   switch (status) {
     case "submitted":
       return COLORS.primary;
+    case "pending":
+      return "#F59E0B";
     case "under_review":
-      return COLORS.warning;
+      return "#FBBF24";
+    case "rescheduled":
+      return COLORS.primary;
     case "approved":
       return COLORS.success;
     case "ready_for_pickup":

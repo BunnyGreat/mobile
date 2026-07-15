@@ -3,14 +3,19 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import { formatNotificationDate } from "../utils/formatNotificationDate";
-import type { Notification, NotificationType } from "../types/notification.types";
+import type {
+  Notification,
+  NotificationType,
+} from "../types/notification.types";
 
 interface NotificationCardProps {
   notification: Notification;
   onPress?: (notification: Notification) => void;
 }
 
-const getNotificationIcon = (type: NotificationType): { name: string; color: string } => {
+const getNotificationIcon = (
+  type: NotificationType,
+): { name: string; color: string } => {
   switch (type) {
     case "announcement":
       return { name: "volume-2", color: "#004E9F" };
@@ -27,7 +32,9 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({
   notification,
   onPress,
 }) => {
-  const { name: iconName, color: iconColor } = getNotificationIcon(notification.type);
+  const { name: iconName, color: iconColor } = getNotificationIcon(
+    notification.type,
+  );
   const isUnread = !notification.isRead;
 
   return (
@@ -38,7 +45,9 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({
     >
       {/* Icon Container */}
       <View style={styles.iconContainer}>
-        <View style={[styles.iconBackground, { backgroundColor: `${iconColor}15` }]}>
+        <View
+          style={[styles.iconBackground, { backgroundColor: `${iconColor}15` }]}
+        >
           <Feather name={iconName as any} size={18} color={iconColor} />
         </View>
         {isUnread && <View style={styles.unreadIndicator} />}
@@ -58,9 +67,7 @@ export const NotificationCard: React.FC<NotificationCardProps> = ({
           </Text>
         </View>
 
-        <Text style={styles.message} numberOfLines={2}>
-          {notification.message}
-        </Text>
+        <Text style={styles.message}>{notification.message}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -131,7 +138,8 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.regular,
     fontSize: FONT_SIZE.body14,
     color: COLORS.paragraph,
-    lineHeight: 20,
+    lineHeight: 22,
+    flexShrink: 1,
   },
 });
 

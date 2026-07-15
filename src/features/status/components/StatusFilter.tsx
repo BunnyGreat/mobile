@@ -1,6 +1,12 @@
 import React from "react";
 import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
-import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING, SHADOWS } from "../../../theme";
+import {
+  COLORS,
+  FONT_FAMILY,
+  FONT_SIZE,
+  SPACING,
+  SHADOWS,
+} from "../../../theme";
 import type { FilterType } from "../types/status.types";
 
 interface StatusFilterProps {
@@ -16,6 +22,7 @@ export const StatusFilter: React.FC<StatusFilterProps> = ({
     { key: "all", label: "All" },
     { key: "certificates", label: "Certificates" },
     { key: "appointments", label: "Appointments" },
+    { key: "archive", label: "Archive" },
   ];
 
   return (
@@ -30,7 +37,9 @@ export const StatusFilter: React.FC<StatusFilterProps> = ({
               style={[styles.chip, isActive && styles.activeChip]}
               onPress={() => onFilterChange(filter.key)}
             >
-              <Text style={[styles.chipText, isActive && styles.activeChipText]}>
+              <Text
+                style={[styles.chipText, isActive && styles.activeChipText]}
+              >
                 {filter.label}
               </Text>
             </TouchableOpacity>

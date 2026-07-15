@@ -1,5 +1,5 @@
 export type CertificateStatus = "submitted" | "under_review" | "approved" | "ready_for_pickup" | "completed" | "rejected";
-export type AppointmentStatus = "submitted" | "under_review" | "approved" | "completed" | "rejected";
+export type AppointmentStatus = "submitted" | "pending" | "under_review" | "rescheduled" | "approved" | "completed" | "rejected";
 export type RequestStatus = CertificateStatus | AppointmentStatus;
 
 export type CertificateType = "barangay_clearance" | "certificate_of_indigency" | "certificate_of_residency";
@@ -12,6 +12,7 @@ export interface CertificateRequest {
   status: CertificateStatus;
   createdAt: string;
   updatedAt: string;
+  rejectionReason?: string;
 }
 
 export interface AppointmentRequest {
@@ -21,6 +22,14 @@ export interface AppointmentRequest {
   status: AppointmentStatus;
   createdAt: string;
   updatedAt: string;
+  appointmentDate?: string;
+  appointmentTime?: string;
+  rescheduledDate?: string;
+  rescheduledTime?: string;
+  displayAppointmentDate?: string;
+  displayAppointmentTime?: string;
+  hasRescheduleNotification?: boolean;
+  rejectionReason?: string;
 }
 
 export interface UnifiedRequest {
@@ -37,12 +46,14 @@ export interface StatusTimelineItem {
   status: RequestStatus;
   title: string;
   description: string;
+  detail?: string;
 }
 
-export type FilterType = "all" | "certificates" | "appointments";
+export type FilterType = "all" | "certificates" | "appointments" | "archive";
 
 export interface StatusStoreState {
   requests: UnifiedRequest[];
+  archivedRequests: UnifiedRequest[];
   loading: boolean;
   refreshing: boolean;
   error: string | null;

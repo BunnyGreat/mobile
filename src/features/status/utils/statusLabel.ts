@@ -4,8 +4,12 @@ export const getStatusLabel = (status: RequestStatus): string => {
   switch (status) {
     case "submitted":
       return "Submitted";
+    case "pending":
+      return "Pending";
     case "under_review":
       return "Under Review";
+    case "rescheduled":
+      return "Rescheduled";
     case "approved":
       return "Approved";
     case "ready_for_pickup":

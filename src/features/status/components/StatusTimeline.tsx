@@ -1,11 +1,12 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { COLORS, SPACING } from "../../../theme";
+import { formatDateLong } from "../../../utils/dateFormatter";
 import StatusStep from "./StatusStep";
 import { getTimelineForRequest, getStepStatus } from "../utils/statusTimeline";
 import type {
+  AppointmentRequest,
   UnifiedRequest,
-  RequestStatus,
   StatusTimelineItem,
 } from "../types/status.types";
 
@@ -14,10 +15,21 @@ interface StatusTimelineProps {
 }
 
 export const StatusTimeline: React.FC<StatusTimelineProps> = ({ request }) => {
-  const timeline = getTimelineForRequest(request.type, request.status);
+  const appointment =
+    request.type === "appointment" ? (request.raw as AppointmentRequest) : null;
+  const timeline = getTimelineForRequest(
+    request.type,
+    request.status,
+    Boolean(
+      appointment?.hasRescheduleNotification ||
+      request.status === "rescheduled",
+    ),
+  );
   const currentStepIndex = timeline.findIndex(
     (step) => getStepStatus(step, request.status, timeline) === "current",
   );
+  const activeStep =
+    timeline[currentStepIndex] ?? timeline[timeline.length - 1];
 
   return (
     <View style={styles.container}>
@@ -36,6 +48,38 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({ request }) => {
                 stepStatus={stepStatus}
                 isLast={isLast}
                 stepNumber={stepNumber}
+                detailTitle={
+                  step.status === "rescheduled" && appointment
+                    ? "Appointment Rescheduled"
+                    : undefined
+                }
+                detailDescription={
+                  step.status === "rescheduled" && appointment
+                    ? "Your appointment has been rescheduled by the Barangay. Please attend using the new schedule below."
+                    : undefined
+                }
+                detailRows={
+                  step.status === "rescheduled" && appointment
+                    ? [
+                        {
+                          label: "New Date",
+                          value: formatDateLong(
+                            appointment.displayAppointmentDate ||
+                              appointment.rescheduledDate ||
+                              appointment.appointmentDate,
+                          ),
+                        },
+                        {
+                          label: "New Time",
+                          value:
+                            appointment.displayAppointmentTime ||
+                            appointment.rescheduledTime ||
+                            appointment.appointmentTime ||
+                            "Pending",
+                        },
+                      ]
+                    : undefined
+                }
               />
             </View>
           );
@@ -61,8 +105,9 @@ export const StatusTimeline: React.FC<StatusTimelineProps> = ({ request }) => {
           />
         </View>
         <Text style={styles.progressText}>
-          {currentStepIndex >= 0 ? currentStepIndex + 1 : 0} of{" "}
-          {timeline.length} steps completed
+          {activeStep
+            ? `${activeStep.title} is currently in progress`
+            : "Timeline ready"}
         </Text>
       </View>
     </View>
@@ -98,7 +143,7 @@ const styles = StyleSheet.create({
   },
   progressFill: {
     height: "100%",
-    backgroundColor: COLORS.success,
+    backgroundColor: COLORS.primary,
     borderRadius: 2,
   },
   progressText: {

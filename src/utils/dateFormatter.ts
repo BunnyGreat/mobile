@@ -12,6 +12,22 @@ export const formatDateShort = (dateString: string): string => {
   }
 };
 
+export const formatDateLong = (dateString?: string | null): string => {
+  if (!dateString) {
+    return "Pending";
+  }
+
+  try {
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) {
+      return dateString;
+    }
+    return format(date, "MMMM d, yyyy");
+  } catch {
+    return dateString;
+  }
+};
+
 export const formatRelativeTime = (value?: string | null): string => {
   if (!value) {
     return "Recently";

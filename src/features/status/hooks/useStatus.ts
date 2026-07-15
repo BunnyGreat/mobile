@@ -3,6 +3,7 @@ import { useStatusStore } from "../store/status.store";
 
 export const useStatus = () => {
   const requests = useStatusStore((state) => state.requests);
+  const archivedRequests = useStatusStore((state) => state.archivedRequests);
   const loading = useStatusStore((state) => state.loading);
   const refreshing = useStatusStore((state) => state.refreshing);
   const error = useStatusStore((state) => state.error);
@@ -22,6 +23,10 @@ export const useStatus = () => {
   }, [subscribeToRequests]);
 
   const filtered = useMemo(() => {
+    if (activeFilter === "archive") {
+      return archivedRequests;
+    }
+
     if (activeFilter === "all") {
       return requests;
     } else if (activeFilter === "certificates") {
@@ -29,11 +34,12 @@ export const useStatus = () => {
     } else {
       return requests.filter((r) => r.type === "appointment");
     }
-  }, [requests, activeFilter]);
+  }, [requests, archivedRequests, activeFilter]);
 
   return useMemo(
     () => ({
       requests: filtered,
+      archivedRequests,
       allRequests: requests,
       loading,
       refreshing,
@@ -42,7 +48,7 @@ export const useStatus = () => {
       setActiveFilter,
       clearError,
     }),
-    [filtered, requests, loading, refreshing, error, activeFilter, setActiveFilter, clearError],
+    [filtered, archivedRequests, requests, loading, refreshing, error, activeFilter, setActiveFilter, clearError],
   );
 };
 

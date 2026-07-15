@@ -21,6 +21,7 @@ export const COLORS = {
   border: "#E2E8F0",
 
   danger: "#DC2626",
+  error: "#DC2626",
 
   success: "#16A34A",
 

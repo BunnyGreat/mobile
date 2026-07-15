@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { auth } from "../../../services/firebase/firebase";
 import {
   fetchNotifications as fetchNotificationDocs,
   getCachedNotifications,
@@ -63,8 +64,9 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   },
 
   subscribeToNotifications: () => {
+    const uid = auth.currentUser?.uid ?? "";
     const unsubscribe = subscribeToNotifications(
-      "",
+      uid,
       (notifications) => {
         set({ notifications, unreadCount: countUnread(notifications), error: null });
       },

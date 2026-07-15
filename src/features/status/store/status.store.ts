@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { fetchRequests, getCachedRequests, subscribeToRequests } from "../services/status.service";
+import { loadArchivedRequests } from "../services/archive.service";
 import type { StatusStoreState, UnifiedRequest, FilterType } from "../types/status.types";
 import { auth } from "../../../services/firebase/firebase";
 
@@ -9,6 +10,7 @@ export const useStatusStore = create<StatusStoreState>((set, get) => ({
   refreshing: false,
   error: null,
   activeFilter: "all",
+  archivedRequests: [],
 
   fetchRequests: async () => {
     set({ loading: true, error: null });
@@ -22,7 +24,19 @@ export const useStatusStore = create<StatusStoreState>((set, get) => ({
       }
 
       const fresh = await fetchRequests();
-      set({ requests: fresh, loading: false, error: null });
+      const archived = await loadArchivedRequests();
+      const visibleRequests = fresh.filter((request) => {
+        const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
+        if (request.status === "completed" || request.status === "rejected") {
+          return !isArchived;
+        }
+        return true;
+      });
+      const archivedEntries = fresh.filter((request) => {
+        const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
+        return request.status === "completed" || request.status === "rejected" ? isArchived : false;
+      });
+      set({ requests: visibleRequests, loading: false, error: null, archivedRequests: archivedEntries });
     } catch (error) {
       const cached = await getCachedRequests();
       set({
@@ -38,7 +52,19 @@ export const useStatusStore = create<StatusStoreState>((set, get) => ({
 
     try {
       const fresh = await fetchRequests();
-      set({ requests: fresh, refreshing: false, error: null });
+      const archived = await loadArchivedRequests();
+      const visibleRequests = fresh.filter((request) => {
+        const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
+        if (request.status === "completed" || request.status === "rejected") {
+          return !isArchived;
+        }
+        return true;
+      });
+      const archivedEntries = fresh.filter((request) => {
+        const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
+        return request.status === "completed" || request.status === "rejected" ? isArchived : false;
+      });
+      set({ requests: visibleRequests, refreshing: false, error: null, archivedRequests: archivedEntries });
     } catch (error) {
       const cached = await getCachedRequests();
       set({
@@ -57,8 +83,20 @@ export const useStatusStore = create<StatusStoreState>((set, get) => ({
 
     const unsubscribe = subscribeToRequests(
       currentUser.uid,
-      (requests) => {
-        set({ requests, error: null });
+      async (requests) => {
+        const archived = await loadArchivedRequests();
+        const visibleRequests = requests.filter((request) => {
+          const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
+          if (request.status === "completed" || request.status === "rejected") {
+            return !isArchived;
+          }
+          return true;
+        });
+        const archivedEntries = requests.filter((request) => {
+          const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
+          return request.status === "completed" || request.status === "rejected" ? isArchived : false;
+        });
+        set({ requests: visibleRequests, error: null, archivedRequests: archivedEntries });
       },
       (error) => {
         set({ error: error.message });

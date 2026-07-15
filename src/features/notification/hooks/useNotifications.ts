@@ -8,17 +8,11 @@ export const useNotifications = () => {
   const refreshing = useNotificationStore((state) => state.refreshing);
   const error = useNotificationStore((state) => state.error);
   const fetchNotifications = useNotificationStore((state) => state.fetchNotifications);
-  const subscribeToNotifications = useNotificationStore((state) => state.subscribeToNotifications);
   const clearError = useNotificationStore((state) => state.clearError);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
-
-  useEffect(() => {
-    const unsubscribe = subscribeToNotifications();
-    return () => unsubscribe();
-  }, [subscribeToNotifications]);
 
   return useMemo(
     () => ({

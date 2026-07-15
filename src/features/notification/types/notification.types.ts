@@ -7,6 +7,8 @@ export interface Notification {
   message: string;
   type: NotificationType;
   referenceId?: string | null;
+  action?: string;
+  metadata?: Record<string, unknown>;
   isRead: boolean;
   createdAt: string;
   updatedAt: string;

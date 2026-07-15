@@ -27,7 +27,25 @@ const NotificationScreen: React.FC = () => {
       await markAsRead(notification.notificationId);
     }
 
-    navigation.navigate("AnnouncementScreen");
+    if (notification.type === "announcement") {
+      navigation.navigate("AnnouncementScreen");
+      return;
+    }
+
+    if (notification.type === "appointment") {
+      navigation.navigate("MainTabs", {
+        screen: "Status",
+        params: { filter: "appointments" },
+      });
+      return;
+    }
+
+    if (notification.type === "certificate") {
+      navigation.navigate("MainTabs", {
+        screen: "Status",
+        params: { filter: "certificates" },
+      });
+    }
   };
 
   return (
