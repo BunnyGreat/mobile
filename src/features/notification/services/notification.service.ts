@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, onSnapshot, query, where } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, query, where } from "firebase/firestore";
 import { auth, db } from "../../../services/firebase/firebase";
 import type { Notification, NotificationType } from "../types/notification.types";
 import {
@@ -55,6 +55,24 @@ const sortByCreatedAtDesc = (a: Notification, b: Notification): number => {
   return Date.parse(b.createdAt) - Date.parse(a.createdAt);
 };
 
+const mergeNotificationsById = (existing: Notification[], incoming: Notification[]): Notification[] => {
+  const byId = new Map<string, Notification>();
+
+  existing.forEach((notification) => {
+    if (notification.notificationId) {
+      byId.set(notification.notificationId, notification);
+    }
+  });
+
+  incoming.forEach((notification) => {
+    if (notification.notificationId) {
+      byId.set(notification.notificationId, notification);
+    }
+  });
+
+  return Array.from(byId.values()).sort(sortByCreatedAtDesc);
+};
+
 const buildNotificationsForCurrentUser = async (
   uid: string,
   snapshots: Array<{ docs: Array<{ id: string; data: () => Record<string, unknown> }> }>,
@@ -102,8 +120,9 @@ export const fetchNotifications = async (): Promise<Notification[]> => {
     readStateMap,
   );
 
-  await saveNotificationsCache(notifications);
-  return notifications;
+  const deduped = mergeNotificationsById([], notifications);
+  await saveNotificationsCache(deduped);
+  return deduped;
 };
 
 export const getCachedNotifications = async (): Promise<Notification[]> => {
@@ -120,40 +139,6 @@ export const getCachedNotifications = async (): Promise<Notification[]> => {
 
 export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
   await saveNotificationReadState(notificationId, true);
-};
-
-export const createResidentNotification = async ({
-  uid,
-  title,
-  message,
-  type,
-  referenceId,
-  action,
-  metadata,
-}: {
-  uid: string;
-  title: string;
-  message: string;
-  type: NotificationType;
-  referenceId: string;
-  action?: string;
-  metadata?: Record<string, unknown>;
-}): Promise<void> => {
-  const now = new Date().toISOString();
-
-  await addDoc(collection(db, "notifications"), {
-    uid,
-    residentUid: uid,
-    title,
-    message,
-    type,
-    referenceId,
-    action,
-    metadata,
-    createdAt: now,
-    updatedAt: now,
-    isRead: false,
-  });
 };
 
 export const subscribeToNotifications = (
@@ -176,8 +161,9 @@ export const subscribeToNotifications = (
       readStateMap,
     );
 
-    await saveNotificationsCache(notifications);
-    onUpdate(notifications);
+    const deduped = mergeNotificationsById([], notifications);
+    await saveNotificationsCache(deduped);
+    onUpdate(deduped);
   };
 
   const handleError = (error: Error) => {

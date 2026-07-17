@@ -15,7 +15,6 @@ import type {
 import { loadStatusCache, saveStatusCache } from "./statusCache.service";
 import { getCertificateTypeLabel } from "../utils/statusLabel";
 import {
-  createResidentNotification,
   fetchNotifications,
   subscribeToNotifications,
 } from "../../notification/services/notification.service";
@@ -49,8 +48,8 @@ const normalizeCertificateStatus = (status: unknown): CertificateRequest["status
 };
 
 const normalizeAppointmentStatus = (status: unknown): AppointmentRequest["status"] => {
-  const value = String(status ?? "submitted").toLowerCase();
-  if (value === "pending") {
+  const value = String(status ?? "pending").toLowerCase();
+  if (value === "submitted" || value === "pending") {
     return "pending";
   }
   if (value === "under_review" || value === "under review") {
@@ -68,7 +67,7 @@ const normalizeAppointmentStatus = (status: unknown): AppointmentRequest["status
   if (value === "rejected") {
     return "rejected";
   }
-  return "submitted";
+  return "pending";
 };
 
 const appointmentStatusHistory = new Map<string, AppointmentRequest["status"]>();
@@ -258,25 +257,6 @@ const maybeNotifyAndArchive = async ({
     const previousStatus = appointmentStatusHistory.get(referenceId);
     const nextStatus = status as AppointmentRequest["status"];
 
-    if (previousStatus && previousStatus !== nextStatus) {
-      const notification = buildAppointmentNotificationMessage(nextStatus, appointment);
-      await createResidentNotification({
-        uid,
-        title: notification.title,
-        message: notification.message,
-        type: "appointment" as NotificationType,
-        referenceId,
-        action: nextStatus === "rescheduled" ? "rescheduled" : undefined,
-        metadata:
-          nextStatus === "rescheduled"
-            ? {
-                appointmentDate: appointment.rescheduledDate || appointment.appointmentDate || "",
-                appointmentTime: appointment.rescheduledTime || appointment.appointmentTime || "",
-              }
-            : undefined,
-      });
-    }
-
     if (nextStatus === "completed" || nextStatus === "rejected") {
       await archiveRequest({
         id: referenceId,
@@ -296,17 +276,6 @@ const maybeNotifyAndArchive = async ({
   const certificate = raw as CertificateRequest;
   const previousStatus = certificateStatusHistory.get(referenceId);
   const nextStatus = status as CertificateRequest["status"];
-
-  if (previousStatus && previousStatus !== nextStatus) {
-    const notification = buildCertificateNotificationMessage(nextStatus, certificate);
-    await createResidentNotification({
-      uid,
-      title: notification.title,
-      message: notification.message,
-      type: "certificate" as NotificationType,
-      referenceId,
-    });
-  }
 
   if (nextStatus === "completed" || nextStatus === "rejected") {
     await archiveRequest({

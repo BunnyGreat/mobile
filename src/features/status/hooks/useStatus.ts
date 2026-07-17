@@ -27,12 +27,14 @@ export const useStatus = () => {
       return archivedRequests;
     }
 
+    const activeItems = requests.filter((request) => request.status !== "completed" && request.status !== "rejected");
+
     if (activeFilter === "all") {
-      return requests;
+      return activeItems;
     } else if (activeFilter === "certificates") {
-      return requests.filter((r) => r.type === "certificate");
+      return activeItems.filter((r) => r.type === "certificate");
     } else {
-      return requests.filter((r) => r.type === "appointment");
+      return activeItems.filter((r) => r.type === "appointment");
     }
   }, [requests, archivedRequests, activeFilter]);
 

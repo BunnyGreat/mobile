@@ -4,6 +4,14 @@ import { loadArchivedRequests } from "../services/archive.service";
 import type { StatusStoreState, UnifiedRequest, FilterType } from "../types/status.types";
 import { auth } from "../../../services/firebase/firebase";
 
+const isArchivedRequest = (request: UnifiedRequest, archived: Array<{ id: string; type: UnifiedRequest["type"] }>): boolean => {
+  return archived.some((item) => item.id === request.id && item.type === request.type);
+};
+
+const isActiveRequest = (request: UnifiedRequest): boolean => {
+  return request.status !== "completed" && request.status !== "rejected";
+};
+
 export const useStatusStore = create<StatusStoreState>((set, get) => ({
   requests: [],
   loading: false,
@@ -25,17 +33,9 @@ export const useStatusStore = create<StatusStoreState>((set, get) => ({
 
       const fresh = await fetchRequests();
       const archived = await loadArchivedRequests();
-      const visibleRequests = fresh.filter((request) => {
-        const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
-        if (request.status === "completed" || request.status === "rejected") {
-          return !isArchived;
-        }
-        return true;
-      });
-      const archivedEntries = fresh.filter((request) => {
-        const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
-        return request.status === "completed" || request.status === "rejected" ? isArchived : false;
-      });
+      const visibleRequests = fresh.filter((request) => isActiveRequest(request));
+      const activeArchivedEntries = fresh.filter((request) => !isActiveRequest(request));
+      const archivedEntries = activeArchivedEntries.filter((request) => isArchivedRequest(request, archived) || !isActiveRequest(request));
       set({ requests: visibleRequests, loading: false, error: null, archivedRequests: archivedEntries });
     } catch (error) {
       const cached = await getCachedRequests();
@@ -53,17 +53,9 @@ export const useStatusStore = create<StatusStoreState>((set, get) => ({
     try {
       const fresh = await fetchRequests();
       const archived = await loadArchivedRequests();
-      const visibleRequests = fresh.filter((request) => {
-        const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
-        if (request.status === "completed" || request.status === "rejected") {
-          return !isArchived;
-        }
-        return true;
-      });
-      const archivedEntries = fresh.filter((request) => {
-        const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
-        return request.status === "completed" || request.status === "rejected" ? isArchived : false;
-      });
+      const visibleRequests = fresh.filter((request) => isActiveRequest(request));
+      const activeArchivedEntries = fresh.filter((request) => !isActiveRequest(request));
+      const archivedEntries = activeArchivedEntries.filter((request) => isArchivedRequest(request, archived) || !isActiveRequest(request));
       set({ requests: visibleRequests, refreshing: false, error: null, archivedRequests: archivedEntries });
     } catch (error) {
       const cached = await getCachedRequests();
@@ -85,17 +77,9 @@ export const useStatusStore = create<StatusStoreState>((set, get) => ({
       currentUser.uid,
       async (requests) => {
         const archived = await loadArchivedRequests();
-        const visibleRequests = requests.filter((request) => {
-          const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
-          if (request.status === "completed" || request.status === "rejected") {
-            return !isArchived;
-          }
-          return true;
-        });
-        const archivedEntries = requests.filter((request) => {
-          const isArchived = archived.some((item) => item.id === request.id && item.type === request.type);
-          return request.status === "completed" || request.status === "rejected" ? isArchived : false;
-        });
+        const visibleRequests = requests.filter((request) => isActiveRequest(request));
+        const activeArchivedEntries = requests.filter((request) => !isActiveRequest(request));
+        const archivedEntries = activeArchivedEntries.filter((request) => isArchivedRequest(request, archived) || !isActiveRequest(request));
         set({ requests: visibleRequests, error: null, archivedRequests: archivedEntries });
       },
       (error) => {

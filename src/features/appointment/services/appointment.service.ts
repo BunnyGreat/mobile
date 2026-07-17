@@ -2,7 +2,6 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../../../services/firebase/firebase";
 import { generateReadableId } from "../../../services/idGenerator";
 import { getProfile } from "../../profile/services/profile.service";
-import { createResidentNotification } from "../../notification/services/notification.service";
 import type { AppointmentFormValues, AppointmentRecord } from "../types/appointment.types";
 import { validateAppointment } from "../utils/appointmentValidation";
 import { uploadAppointmentDocument } from "./appointmentDocument.service";
@@ -65,7 +64,7 @@ export const createAppointment = async (
     supportingDocumentName: values.supportingDocumentName ?? "",
     supportingDocumentUrl,
     supportingDocumentPath,
-    status: "submitted",
+    status: "pending",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -75,14 +74,6 @@ export const createAppointment = async (
     appointmentId,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-  });
-
-  await createResidentNotification({
-    uid: currentUser.uid,
-    title: "Appointment Submitted",
-    message: "Your appointment request has been submitted successfully.",
-    type: "appointment",
-    referenceId: appointmentId,
   });
 
   return {

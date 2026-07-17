@@ -6,10 +6,31 @@ import {
   markNotificationAsRead,
   subscribeToNotifications,
 } from "../services/notification.service";
-import type { NotificationStoreState } from "../types/notification.types";
+import type { NotificationStoreState, Notification } from "../types/notification.types";
+
+let notificationSubscription: (() => void) | null = null;
+let currentUserUid: string | null = null;
 
 const countUnread = (notifications: NotificationStoreState["notifications"]) =>
   notifications.filter((notification) => !notification.isRead).length;
+
+const mergeNotifications = (cached: Notification[], fresh: Notification[]): Notification[] => {
+  const byId = new Map<string, Notification>();
+
+  cached.forEach((notification) => {
+    if (notification.notificationId) {
+      byId.set(notification.notificationId, notification);
+    }
+  });
+
+  fresh.forEach((notification) => {
+    if (notification.notificationId) {
+      byId.set(notification.notificationId, notification);
+    }
+  });
+
+  return Array.from(byId.values()).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+};
 
 export const useNotificationStore = create<NotificationStoreState>((set, get) => ({
   notifications: [],
@@ -19,25 +40,29 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   error: null,
 
   fetchNotifications: async () => {
+    const existing = get().notifications;
     set({ loading: true, error: null });
 
     try {
       const cached = await getCachedNotifications();
-      if (cached.length > 0) {
-        set({ notifications: cached, unreadCount: countUnread(cached), loading: false });
+      const initial = cached.length > 0 ? cached : existing;
+      if (initial.length > 0) {
+        set({ notifications: initial, unreadCount: countUnread(initial), loading: false });
       } else {
         set({ notifications: [], unreadCount: 0, loading: false });
       }
 
       const fresh = await fetchNotificationDocs();
-      set({ notifications: fresh, unreadCount: countUnread(fresh), loading: false, error: null });
+      const merged = mergeNotifications(initial, fresh);
+      set({ notifications: merged, unreadCount: countUnread(merged), loading: false, error: null });
     } catch (error) {
       const cached = await getCachedNotifications();
+      const fallback = cached.length > 0 ? cached : existing;
       const message = error instanceof Error ? error.message : "Unable to load notifications.";
 
       set({
-        notifications: cached,
-        unreadCount: countUnread(cached),
+        notifications: fallback,
+        unreadCount: countUnread(fallback),
         loading: false,
         error: message,
       });
@@ -45,18 +70,22 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   },
 
   refreshNotifications: async () => {
+    const existing = get().notifications;
     set({ refreshing: true, error: null });
 
     try {
       const fresh = await fetchNotificationDocs();
-      set({ notifications: fresh, unreadCount: countUnread(fresh), refreshing: false, error: null });
+      const cached = await getCachedNotifications();
+      const merged = mergeNotifications(existing.length > 0 ? existing : cached, fresh);
+      set({ notifications: merged, unreadCount: countUnread(merged), refreshing: false, error: null });
     } catch (error) {
       const cached = await getCachedNotifications();
+      const fallback = cached.length > 0 ? cached : existing;
       const message = error instanceof Error ? error.message : "Unable to refresh notifications.";
 
       set({
-        notifications: cached,
-        unreadCount: countUnread(cached),
+        notifications: fallback,
+        unreadCount: countUnread(fallback),
         refreshing: false,
         error: message,
       });
@@ -65,17 +94,34 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
 
   subscribeToNotifications: () => {
     const uid = auth.currentUser?.uid ?? "";
-    const unsubscribe = subscribeToNotifications(
+
+    if (notificationSubscription && currentUserUid === uid) {
+      return () => {};
+    }
+
+    if (notificationSubscription) {
+      notificationSubscription();
+      notificationSubscription = null;
+    }
+
+    currentUserUid = uid;
+    notificationSubscription = subscribeToNotifications(
       uid,
       (notifications) => {
-        set({ notifications, unreadCount: countUnread(notifications), error: null });
+        const existing = get().notifications;
+        const deduped = mergeNotifications(existing, notifications);
+        set({ notifications: deduped, unreadCount: countUnread(deduped), error: null, loading: false, refreshing: false });
       },
       (error) => {
         set({ error: error.message });
       },
     );
 
-    return unsubscribe;
+    return () => {
+      notificationSubscription?.();
+      notificationSubscription = null;
+      currentUserUid = null;
+    };
   },
 
   markAsRead: async (notificationId: string) => {

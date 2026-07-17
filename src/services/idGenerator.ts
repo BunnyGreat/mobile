@@ -20,10 +20,12 @@ export const generateReadableId = async ({
   const prefixPattern = `${prefix}-${targetDate}-`;
 
   const snapshot = await getDocs(collection(db, collectionName));
+  const existingIds = new Set<string>();
   let highestSequence = 0;
 
   snapshot.docs.forEach((doc) => {
     const value = (doc.data()[fieldName] as string | undefined) ?? "";
+    existingIds.add(value);
 
     if (!value.startsWith(prefixPattern)) {
       return;
@@ -37,6 +39,13 @@ export const generateReadableId = async ({
     }
   });
 
-  const nextSequence = (highestSequence + 1).toString().padStart(sequenceLength, "0");
-  return `${prefix}-${targetDate}-${nextSequence}`;
+  let nextSequence = highestSequence + 1;
+  let candidateId = `${prefix}-${targetDate}-${nextSequence.toString().padStart(sequenceLength, "0")}`;
+
+  while (existingIds.has(candidateId)) {
+    nextSequence += 1;
+    candidateId = `${prefix}-${targetDate}-${nextSequence.toString().padStart(sequenceLength, "0")}`;
+  }
+
+  return candidateId;
 };

@@ -1,6 +1,5 @@
 import { auth, db } from "../../../services/firebase/firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { createResidentNotification } from "../../notification/services/notification.service";
 import type { Profile } from "../../profile/types/profile.types";
 import { generateReferenceNumber } from "../utils/generateReferenceNumber";
 
@@ -40,14 +39,6 @@ export const submitBarangayClearanceRequest = async (
     status: "submitted",
     createdAt: now,
     updatedAt: now,
-  });
-
-  await createResidentNotification({
-    uid: currentUser.uid,
-    title: "Certificate Submitted",
-    message: "Your certificate request has been submitted successfully.",
-    type: "certificate",
-    referenceId: requestId,
   });
 
   return requestId;
