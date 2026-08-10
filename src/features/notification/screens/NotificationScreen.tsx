@@ -8,6 +8,7 @@ import NotificationList from "../components/NotificationList";
 import { useNotifications } from "../hooks/useNotifications";
 import { useRefreshNotifications } from "../hooks/useRefreshNotifications";
 import { useMarkAsRead } from "../hooks/useMarkAsRead";
+import { useMarkAllAsRead } from "../hooks/useMarkAllAsRead";
 import type { Notification } from "../types/notification.types";
 
 const NotificationScreen: React.FC = () => {
@@ -15,6 +16,7 @@ const NotificationScreen: React.FC = () => {
   const { notifications, loading, refreshing } = useNotifications();
   const refresh = useRefreshNotifications();
   const markAsRead = useMarkAsRead();
+  const markAllAsRead = useMarkAllAsRead();
 
   useFocusEffect(
     useCallback(() => {
@@ -55,16 +57,20 @@ const NotificationScreen: React.FC = () => {
         <View style={styles.pageHeader}>
           <View style={styles.headerContent}>
             {notifications.filter((n) => !n.isRead).length > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>
-                  {notifications.filter((n) => !n.isRead).length} new
+              <>
+                <View style={styles.unreadBadge}>
+                  <Text style={styles.unreadBadgeText}>
+                    {notifications.filter((n) => !n.isRead).length} new
+                  </Text>
+                </View>
+                <Text style={styles.markAllText} onPress={markAllAsRead}>
+                  Mark all as read
                 </Text>
-              </View>
+              </>
             )}
           </View>
         </View>
 
-        {/* Content */}
         <View style={styles.content}>
           {loading && notifications.length === 0 ? (
             <View style={styles.loadingContainer}>
@@ -118,6 +124,12 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  markAllText: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body12,
+    marginLeft: SPACING.sm,
   },
   loadingContainer: {
     flex: 1,

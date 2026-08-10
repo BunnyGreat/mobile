@@ -1,10 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { auth } from "../../../services/firebase/firebase";
 import type { Notification } from "../types/notification.types";
 
 const NOTIFICATIONS_CACHE_KEY = "notification_cache";
 const NOTIFICATION_READ_STATE_KEY = "notification_read_state";
 
 type NotificationReadStateMap = Record<string, boolean>;
+
+const getNotificationReadStateKey = (uid?: string) =>
+  uid ? `${NOTIFICATION_READ_STATE_KEY}_${uid}` : NOTIFICATION_READ_STATE_KEY;
 
 export const saveNotificationsCache = async (notifications: Notification[]) => {
   try {
@@ -33,7 +37,26 @@ export const saveNotificationReadState = async (notificationId: string, isRead: 
   try {
     const previousState = await loadNotificationReadStateMap();
     const nextState = { ...previousState, [notificationId]: isRead };
-    await AsyncStorage.setItem(NOTIFICATION_READ_STATE_KEY, JSON.stringify(nextState));
+    const uid = auth.currentUser?.uid ?? "";
+    await AsyncStorage.setItem(getNotificationReadStateKey(uid), JSON.stringify(nextState));
+  } catch (error) {
+    console.warn("Failed to persist notification read state", error);
+  }
+};
+
+export const saveNotificationReadStates = async (notificationIds: string[]) => {
+  if (notificationIds.length === 0) {
+    return;
+  }
+
+  try {
+    const previousState = await loadNotificationReadStateMap();
+    const nextState = { ...previousState };
+    notificationIds.forEach((notificationId) => {
+      nextState[notificationId] = true;
+    });
+    const uid = auth.currentUser?.uid ?? "";
+    await AsyncStorage.setItem(getNotificationReadStateKey(uid), JSON.stringify(nextState));
   } catch (error) {
     console.warn("Failed to persist notification read state", error);
   }
@@ -41,7 +64,8 @@ export const saveNotificationReadState = async (notificationId: string, isRead: 
 
 export const loadNotificationReadStateMap = async (): Promise<NotificationReadStateMap> => {
   try {
-    const raw = await AsyncStorage.getItem(NOTIFICATION_READ_STATE_KEY);
+    const uid = auth.currentUser?.uid ?? "";
+    const raw = await AsyncStorage.getItem(getNotificationReadStateKey(uid));
     if (!raw) {
       return {};
     }

@@ -4,6 +4,7 @@ import {
   fetchNotifications as fetchNotificationDocs,
   getCachedNotifications,
   markNotificationAsRead,
+  markNotificationsAsRead,
   subscribeToNotifications,
 } from "../services/notification.service";
 import type { NotificationStoreState, Notification } from "../types/notification.types";
@@ -136,6 +137,22 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
       set({ notifications: updated, unreadCount: countUnread(updated) });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to mark as read.";
+      set({ error: message });
+    }
+  },
+
+  markAllAsRead: async () => {
+    try {
+      const state = get();
+      const unreadIds = state.notifications.filter((notification) => !notification.isRead).map((notification) => notification.notificationId);
+      if (unreadIds.length > 0) {
+        await markNotificationsAsRead(unreadIds);
+      }
+
+      const updated = state.notifications.map((notification) => ({ ...notification, isRead: true }));
+      set({ notifications: updated, unreadCount: 0 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to mark all as read.";
       set({ error: message });
     }
   },

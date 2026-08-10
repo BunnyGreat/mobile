@@ -5,6 +5,7 @@ import {
   loadNotificationReadStateMap,
   loadNotificationsCache,
   saveNotificationReadState,
+  saveNotificationReadStates,
   saveNotificationsCache,
 } from "./notificationCache.service";
 
@@ -139,6 +140,10 @@ export const getCachedNotifications = async (): Promise<Notification[]> => {
 
 export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
   await saveNotificationReadState(notificationId, true);
+};
+
+export const markNotificationsAsRead = async (notificationIds: string[]): Promise<void> => {
+  await saveNotificationReadStates(notificationIds);
 };
 
 export const subscribeToNotifications = (

@@ -24,5 +24,6 @@ export interface NotificationStoreState {
   refreshNotifications: () => Promise<void>;
   subscribeToNotifications: () => () => void;
   markAsRead: (notificationId: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
   clearError: () => void;
 }
