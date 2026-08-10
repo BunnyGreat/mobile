@@ -16,13 +16,10 @@ export const formatFullName = (
   personalInformation: ProfilePersonalInformation,
 ): string => {
   const middleName = safeTrim(personalInformation.middleName);
-  const middleInitial = middleName
-    ? `${middleName.charAt(0).toUpperCase()}.`
-    : null;
 
   return [
     safeTrim(personalInformation.firstName),
-    middleInitial,
+    middleName,
     safeTrim(personalInformation.lastName),
     safeTrim(personalInformation.suffix),
   ]
