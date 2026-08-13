@@ -50,8 +50,20 @@ export const sendRegistrationOtpEmail = async (
   }
 
   const apiKey = process.env.EXPO_PUBLIC_RESEND_API_KEY;
+  // Security: Resend API key must not be bundled in production mobile apps.
+  // If present in the runtime bundle this is a security risk. Warn in dev and fail safely.
   if (!apiKey) {
     throw new Error("Resend API key is not configured.");
+  }
+
+  if (!__DEV__) {
+    // In production builds the client should not call Resend directly.
+    // Log a visible warning and throw so registration flow falls back to server-side flow.
+    // This prevents embedding secret API keys in the mobile bundle.
+    // Maintain existing behavior in development for debugging.
+    // eslint-disable-next-line no-console
+    console.warn("[SECURITY] Resend API key detected in client build — remove from mobile bundle and call email send from a backend.");
+    throw new Error("Email delivery is disabled in this build for security reasons.");
   }
 
   const resendSender = "Barangay San Isidro <noreply@barangay-san-isidro.help>"; // TODO: Replace with noreply@barangaysanisidro.ph in production

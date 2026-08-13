@@ -1,14 +1,14 @@
 {
   "expo": {
-    "name": "barangay-mobile",
+    "name": "San Isidro eBarangay",
     "slug": "barangay-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/logo.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/images/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,11 +17,12 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logo.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.sanisidro.ebrgy"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -30,6 +31,11 @@
       "@react-native-community/datetimepicker",
       "expo-font"
     ],
-    "scheme": "barangay"
+    "scheme": "barangay",
+    "extra": {
+      "eas": {
+        "projectId": "df1e7c8e-4618-490b-b4f7-920dd6f4d43f"
+      }
+    }
   }
 }

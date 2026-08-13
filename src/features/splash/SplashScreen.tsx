@@ -12,6 +12,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { RootStackNavigationProp } from "../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../theme";
 import { OnboardingStorage } from "../onboarding/onboardingStorage";
+import checkEnvConfig from "../../services/config/diagnostics";
 
 const SPLASH_DURATION = 2000; // Match this with animation duration
 
@@ -21,6 +22,15 @@ const SplashScreen: React.FC = () => {
   const isMountedRef = useRef(true);
 
   useEffect(() => {
+    // Log config presence in development to help diagnose standalone build issues
+    try {
+      if (__DEV__) {
+        checkEnvConfig();
+      }
+    } catch (e) {
+      // ignore diagnostics failures
+    }
+
     // Start progress animation
     Animated.timing(progressValue, {
       toValue: 100,
