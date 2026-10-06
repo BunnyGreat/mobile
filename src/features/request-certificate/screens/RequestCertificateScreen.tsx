@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -10,7 +11,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
-import { ScreenContainer } from "../../../components";
 import { useCertificateRequest } from "../hooks/useCertificateRequest";
 import type { RootStackParamList } from "../../../navigation/types";
 import type { CertificateTypeItem } from "../types/certificate.types";
@@ -21,8 +21,6 @@ import {
   SPACING,
 } from "../../../theme";
 
-const CARD_WIDTH = "48%";
-
 const getCertificateIcon = (id: string) => {
   switch (id) {
     case "barangay-clearance":
@@ -30,7 +28,7 @@ const getCertificateIcon = (id: string) => {
     case "certificate-of-indigency":
       return require("../../../../assets/icons/docs.png");
     case "barangay-certification":
-      return require("../../../../assets/icons/digital-id.png");
+      return require("../../../../assets/icons/docs.png");
     case "certificate-of-cohabitation":
       return require("../../../../assets/icons/location.png");
     case "business-clearance":
@@ -45,22 +43,21 @@ const getCertificateIcon = (id: string) => {
 const RequestCertificateScreen = () => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { certificateTypes, selectedType, selectCertificateType } =
-    useCertificateRequest();
+  const { certificateTypes, selectCertificateType } = useCertificateRequest();
 
   const renderItem = (item: CertificateTypeItem) => {
-    const isSelected = selectedType?.id === item.id;
-
     return (
       <TouchableOpacity
         key={item.id}
-        activeOpacity={item.disabled ? 1 : 0.65}
+        activeOpacity={item.disabled ? 1 : 0.78}
         disabled={item.disabled}
         onPress={() => {
           if (!item.disabled) {
             selectCertificateType(item);
             if (item.id === "barangay-clearance") {
               navigation.navigate("BarangayClearance");
+            } else if (item.id === "barangay-certification") {
+              navigation.navigate("BarangayCertification");
             }
           }
         }}
@@ -69,17 +66,11 @@ const RequestCertificateScreen = () => {
         <View
           style={[
             styles.card,
-            isSelected && styles.cardSelected,
             item.disabled && styles.cardDisabled,
           ]}
         >
           <View style={styles.cardContent}>
-            <View
-              style={[
-                styles.iconContainer,
-                isSelected && styles.iconContainerSelected,
-              ]}
-            >
+            <View style={styles.iconContainer}>
               <Image
                 source={getCertificateIcon(item.id)}
                 style={styles.icon}
@@ -89,33 +80,33 @@ const RequestCertificateScreen = () => {
 
             <View style={styles.textGroup}>
               <Text
-                style={[
-                  styles.cardTitle,
-                  isSelected && styles.cardTitleSelected,
-                ]}
+                style={styles.cardTitle}
                 numberOfLines={2}
               >
                 {item.title}
               </Text>
 
-              {!item.disabled ? (
-                <Text style={styles.cardDescription} numberOfLines={3}>
+              {item.description !== "Coming soon" ? (
+                <Text style={styles.cardDescription} numberOfLines={2}>
                   {item.description}
                 </Text>
-              ) : (
+              ) : null}
+
+              {item.disabled ? (
                 <View style={styles.comingSoonBadge}>
                   <Text style={styles.comingSoonText}>Coming soon</Text>
                 </View>
-              )}
+              ) : null}
             </View>
           </View>
 
-          {isSelected && (
-            <View style={styles.selectedIndicator}>
-              <View style={styles.checkCircle}>
-                <Feather name="check" size={11} color={COLORS.white} />
-              </View>
-            </View>
+          {!item.disabled && (
+            <Feather
+              name="chevron-right"
+              size={20}
+              color={COLORS.placeholder}
+              style={styles.cardChevron}
+            />
           )}
         </View>
       </TouchableOpacity>
@@ -123,7 +114,10 @@ const RequestCertificateScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={["top", "left", "right"]}>
+    <SafeAreaView
+      style={styles.screen}
+      edges={["top", "left", "right", "bottom"]}
+    >
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -135,17 +129,21 @@ const RequestCertificateScreen = () => {
         <View style={styles.headerContent}>
           <Text style={styles.headerTitle}>Request Certificate</Text>
           <Text style={styles.headerSubtitle}>
-            Select a document to get started
+            Request a barangay certificate or document you need.
           </Text>
         </View>
       </View>
 
-      <ScreenContainer
-        scrollable
+      <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <View style={styles.grid}>{certificateTypes.map(renderItem)}</View>
-      </ScreenContainer>
+        <View style={styles.content}>
+          <Text style={styles.sectionTitle}>Available Certificates</Text>
+          <View style={styles.grid}>{certificateTypes.map(renderItem)}</View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -156,14 +154,17 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.background,
   },
   header: {
-    paddingTop: SPACING.lg,
-    paddingHorizontal: SPACING.xl,
-    paddingBottom: SPACING.xl,
+    paddingTop: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.sm,
     flexDirection: "row",
     alignItems: "flex-start",
     backgroundColor: COLORS.white,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+  },
+  scrollView: {
+    flex: 1,
   },
   backButton: {
     paddingRight: SPACING.sm,
@@ -186,107 +187,88 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   scrollContent: {
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.giant,
+    flexGrow: 1,
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.lg,
+  },
+  content: {
+    gap: SPACING.sm,
+  },
+  sectionTitle: {
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body14,
+    color: COLORS.heading,
   },
   grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    gap: SPACING.sm,
   },
   cardWrapper: {
-    width: CARD_WIDTH,
-    marginBottom: SPACING.lg,
+    width: "100%",
   },
   card: {
     borderRadius: 14,
     backgroundColor: COLORS.white,
-    padding: SPACING.lg,
-    minHeight: 170,
-    borderWidth: 1.5,
+    padding: SPACING.md,
+    minHeight: 80,
+    borderWidth: 1,
     borderColor: COLORS.border,
-    position: "relative",
-  },
-  cardSelected: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.white,
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
+    flexDirection: "row",
+    alignItems: "center",
   },
   cardDisabled: {
-    opacity: 0.4,
+    opacity: 0.58,
   },
   cardContent: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
   },
   iconContainer: {
-    width: 48,
-    height: 48,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: COLORS.inputBackground,
+    backgroundColor: `${COLORS.primary}0D`,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: SPACING.md,
-  },
-  iconContainerSelected: {
-    backgroundColor: `${COLORS.primary}10`,
+    marginRight: SPACING.sm,
   },
   icon: {
-    width: 26,
-    height: 26,
+    width: 24,
+    height: 24,
   },
   textGroup: {
     flex: 1,
+    paddingRight: SPACING.xs,
   },
   cardTitle: {
     fontFamily: FONT_FAMILY.semibold,
-    fontSize: FONT_SIZE.h15,
+    fontSize: FONT_SIZE.body14,
     color: COLORS.heading,
-    lineHeight: 21,
-    marginBottom: SPACING.xs,
-  },
-  cardTitleSelected: {
-    color: COLORS.primary,
+    lineHeight: 19,
+    marginBottom: 2,
   },
   cardDescription: {
     fontFamily: FONT_FAMILY.regular,
     fontSize: FONT_SIZE.body12,
     color: COLORS.paragraph,
-    lineHeight: 17,
+    lineHeight: 16,
   },
   comingSoonBadge: {
     alignSelf: "flex-start",
     backgroundColor: COLORS.inputBackground,
     paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs - 1,
+    paddingVertical: 2,
     borderRadius: 6,
-    marginTop: SPACING.xs - 2,
+    marginTop: SPACING.xs,
   },
   comingSoonText: {
     fontFamily: FONT_FAMILY.medium,
     fontSize: FONT_SIZE.body11,
     color: COLORS.placeholder,
   },
-  selectedIndicator: {
-    position: "absolute",
-    top: SPACING.md,
-    right: SPACING.md,
-  },
-  checkCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: COLORS.primary,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: COLORS.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+  cardChevron: {
+    marginLeft: SPACING.xs,
   },
 });
 

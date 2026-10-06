@@ -3,9 +3,14 @@ import { doc, setDoc } from "firebase/firestore";
 import type { Profile } from "../../profile/types/profile.types";
 import { generateReferenceNumber } from "../utils/generateReferenceNumber";
 
-export const submitBarangayClearanceRequest = async (
-  purpose: string,
+export type CertificateRequestType =
+  | "Barangay Clearance"
+  | "Barangay Certification";
+
+export const submitCertificateRequest = async (
   profile: Profile,
+  certificateType: CertificateRequestType,
+  purpose?: string,
 ): Promise<string> => {
   const currentUser = auth.currentUser;
 
@@ -13,7 +18,16 @@ export const submitBarangayClearanceRequest = async (
     throw new Error("Unable to submit request: user is not authenticated.");
   }
 
-  if (!purpose.trim()) {
+  if (profile.uid !== currentUser.uid) {
+    throw new Error(
+      "Unable to submit request: resident profile does not match the authenticated account.",
+    );
+  }
+
+  const requestPurpose =
+    certificateType === "Barangay Clearance" ? purpose?.trim() : undefined;
+
+  if (certificateType === "Barangay Clearance" && !requestPurpose) {
     throw new Error("Purpose is required.");
   }
 
@@ -25,8 +39,10 @@ export const submitBarangayClearanceRequest = async (
   await setDoc(requestRef, {
     requestId,
     uid: currentUser.uid,
-    certificateType: "Barangay Clearance",
-    purpose: purpose.trim(),
+    certificateType,
+    ...(certificateType === "Barangay Clearance"
+      ? { purpose: requestPurpose }
+      : {}),
     residentInformation: {
       firstName: profile.personalInformation.firstName,
       middleName: profile.personalInformation.middleName ?? "",
@@ -43,3 +59,9 @@ export const submitBarangayClearanceRequest = async (
 
   return requestId;
 };
+
+export const submitBarangayClearanceRequest = async (
+  purpose: string,
+  profile: Profile,
+): Promise<string> =>
+  submitCertificateRequest(profile, "Barangay Clearance", purpose);

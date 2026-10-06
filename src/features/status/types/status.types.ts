@@ -2,7 +2,11 @@ export type CertificateStatus = "submitted" | "under_review" | "approved" | "rea
 export type AppointmentStatus = "submitted" | "pending" | "under_review" | "rescheduled" | "approved" | "completed" | "rejected";
 export type RequestStatus = CertificateStatus | AppointmentStatus;
 
-export type CertificateType = "barangay_clearance" | "certificate_of_indigency" | "certificate_of_residency";
+export type CertificateType =
+  | "barangay_clearance"
+  | "certificate_of_indigency"
+  | "certificate_of_residency"
+  | "Barangay Certification";
 export type RequestType = "certificate" | "appointment";
 
 export interface CertificateRequest {

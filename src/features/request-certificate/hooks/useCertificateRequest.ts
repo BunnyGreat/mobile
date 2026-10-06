@@ -2,7 +2,10 @@ import { useCallback, useMemo, useState } from "react";
 import { getCachedCertificateTypes } from "../services/certificateCache.service";
 import { useCertificateStore } from "../store/certificate.store";
 import { useProfileStore } from "../../profile/store/profile.store";
-import { submitBarangayClearanceRequest } from "../services/barangayClearance.service";
+import {
+  submitCertificateRequest,
+  type CertificateRequestType,
+} from "../services/barangayClearance.service";
 import { validateBarangayClearance } from "../services/certificateValidation.service";
 import type { CertificateTypeItem } from "../types/certificate.types";
 import type { CertificateStore } from "../store/certificate.store";
@@ -39,33 +42,77 @@ export const useCertificateRequest = () => {
     [setSelectedCertificateTypeId],
   );
 
-  const validate = useCallback(() => {
-    const validationErrors = validateBarangayClearance({ purpose });
+  const validate = useCallback((certificateType: CertificateRequestType) => {
+    const validationErrors =
+      certificateType === "Barangay Clearance"
+        ? validateBarangayClearance({ purpose })
+        : {};
+
+    if (certificateType === "Barangay Certification") {
+      if (!profile) {
+        validationErrors.profile = "Resident profile must be loaded before submitting.";
+      } else {
+        const fullAddress = [
+          profile.residenceInformation.houseNumber,
+          profile.residenceInformation.street,
+          profile.residenceInformation.purok,
+          profile.residenceInformation.barangay,
+          profile.residenceInformation.municipality,
+          profile.residenceInformation.province,
+        ]
+          .filter(Boolean)
+          .join(", ");
+        const residentInformation = [
+          profile.personalInformation.firstName,
+          profile.personalInformation.lastName,
+          fullAddress,
+          profile.personalInformation.dateOfBirth,
+          profile.personalInformation.contactNumber,
+        ];
+        if (residentInformation.some((value) => !value?.trim())) {
+          validationErrors.profile =
+            "Complete your registered resident information before submitting this request.";
+        }
+      }
+    }
+
     setErrors(validationErrors);
     return Object.keys(validationErrors).length === 0;
-  }, [purpose]);
+  }, [profile, purpose]);
 
-  const submitRequest = useCallback(async () => {
+  const submitRequest = useCallback(async (
+    certificateType: CertificateRequestType = "Barangay Clearance",
+  ) => {
     if (!profile) {
-      setErrors({ purpose: "Resident profile must be loaded before submitting." });
+      setErrors({
+        [certificateType === "Barangay Clearance" ? "purpose" : "profile"]:
+          "Resident profile must be loaded before submitting.",
+      });
       return null;
     }
 
-    if (!validate()) {
+    if (!validate(certificateType)) {
       return null;
     }
 
     setIsSubmitting(true);
 
     try {
-      const requestId = await submitBarangayClearanceRequest(purpose, profile);
+      const requestId = await submitCertificateRequest(
+        profile,
+        certificateType,
+        certificateType === "Barangay Clearance" ? purpose : undefined,
+      );
       return requestId;
     } catch (error: unknown) {
       const message =
         error instanceof Error
           ? error.message
-          : "Unable to submit Barangay Clearance request.";
-      setErrors({ purpose: message });
+          : `Unable to submit ${certificateType} request.`;
+      setErrors({
+        [certificateType === "Barangay Clearance" ? "purpose" : "profile"]:
+          message,
+      });
       return null;
     } finally {
       setIsSubmitting(false);

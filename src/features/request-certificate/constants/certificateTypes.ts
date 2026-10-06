@@ -17,9 +17,8 @@ export const CERTIFICATE_TYPES: CertificateTypeItem[] = [
   {
     id: "barangay-certification",
     title: "Barangay Certification",
-    description: "Coming soon",
-    disabled: true,
-    subtitle: "Coming Soon",
+    description: "Request an official barangay certification.",
+    disabled: false,
   },
   {
     id: "more-soon",

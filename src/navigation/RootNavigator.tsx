@@ -22,6 +22,7 @@ import { AnnouncementScreen } from "../features/announcement";
 import MainTabNavigator from "./MainTabNavigator";
 import RequestCertificateScreen from "../features/request-certificate/screens/RequestCertificateScreen";
 import BarangayClearanceScreen from "../features/request-certificate/screens/BarangayClearanceScreen";
+import BarangayCertificationScreen from "../features/request-certificate/screens/BarangayCertificationScreen";
 import { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -75,6 +76,10 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen
         name="BarangayClearance"
         component={BarangayClearanceScreen}
+      />
+      <Stack.Screen
+        name="BarangayCertification"
+        component={BarangayCertificationScreen}
       />
       <Stack.Screen name="AnnouncementScreen" component={AnnouncementScreen} />
       <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />

@@ -27,6 +27,7 @@ export type RootStackParamList = {
   ChangePasswordScreen: undefined;
   RequestCertificateScreen: undefined;
   BarangayClearance: undefined;
+  BarangayCertification: undefined;
   AnnouncementScreen: undefined;
   FeedbackScreen: undefined;
   AppointmentScreen: undefined;

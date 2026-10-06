@@ -1,40 +1,27 @@
 import React, { useEffect } from "react";
-import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
-import { AppButton, AppInput, ScreenContainer } from "../../../components";
+import { AppButton, AppInput } from "../../../components";
 import { useProfileStore } from "../../../features/profile/store/profile.store";
 import { useCertificateRequest } from "../hooks/useCertificateRequest";
 import { CLEARANCE_PURPOSES } from "../constants/clearancePurposes";
-import { CLEARANCE_REQUIREMENTS } from "../constants/requirements";
+import {
+  CertificateSection,
+  RequiredDocuments,
+} from "../components/common/CertificateSections";
 import { ReadOnlyField } from "../components/common/ReadOnlyField";
 import type { RootStackParamList } from "../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
-
-const SectionBlock: React.FC<{
-  icon: keyof typeof Feather.glyphMap;
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-  isFirst?: boolean;
-}> = ({ icon, title, subtitle, children, isFirst = false }) => (
-  <View style={[styles.sectionBlock, isFirst && styles.sectionBlockFirst]}>
-    <View style={styles.sectionHeader}>
-      <View style={styles.sectionIconBadge}>
-        <Feather name={icon} size={16} color={COLORS.primary} />
-      </View>
-      <View style={styles.sectionTitleGroup}>
-        <Text style={styles.sectionTitle}>{title}</Text>
-        {subtitle ? (
-          <Text style={styles.sectionSubtitle}>{subtitle}</Text>
-        ) : null}
-      </View>
-    </View>
-    <View style={styles.sectionContent}>{children}</View>
-  </View>
-);
 
 const InfoRow: React.FC<{ label: string; value: string }> = ({
   label,
@@ -80,8 +67,12 @@ const BarangayClearanceScreen = () => {
         <Text style={styles.headerTitle}>Barangay Clearance</Text>
       </View>
 
-      <ScreenContainer scrollable contentContainerStyle={styles.scrollContent}>
-        <SectionBlock
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <CertificateSection
           icon="user"
           title="Applicant Information"
           subtitle="Pre-filled from your registered profile"
@@ -107,9 +98,9 @@ const BarangayClearanceScreen = () => {
             label="Contact Number"
             value={profile?.personalInformation.contactNumber ?? ""}
           />
-        </SectionBlock>
+        </CertificateSection>
 
-        <SectionBlock
+        <CertificateSection
           icon="file-text"
           title="Purpose of Request"
           subtitle="What will you use this clearance for?"
@@ -147,36 +138,9 @@ const BarangayClearanceScreen = () => {
             containerStyle={{ marginBottom: 0 }}
             inputStyle={styles.purposeInput}
           />
-        </SectionBlock>
+        </CertificateSection>
 
-        <SectionBlock icon="check-circle" title="Required Documents">
-          {CLEARANCE_REQUIREMENTS.length ? (
-            <View style={styles.requirementsList}>
-              {CLEARANCE_REQUIREMENTS.map((requirement, index) => (
-                <View key={requirement} style={styles.requirementRow}>
-                  <View style={styles.requirementNumber}>
-                    <Text style={styles.requirementNumberText}>
-                      {index + 1}
-                    </Text>
-                  </View>
-                  <Text style={styles.requirementText}>{requirement}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyRequirements}>
-              <Feather
-                name="check-circle"
-                size={24}
-                color={COLORS.success}
-                style={{ marginBottom: SPACING.sm }}
-              />
-              <Text style={styles.emptyRequirementsText}>
-                No additional documents required
-              </Text>
-            </View>
-          )}
-        </SectionBlock>
+        <RequiredDocuments />
 
         <View style={styles.submitSection}>
           <AppButton
@@ -203,7 +167,7 @@ const BarangayClearanceScreen = () => {
             size="lg"
           />
         </View>
-      </ScreenContainer>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -228,51 +192,18 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.semibold,
     color: COLORS.heading,
   },
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
-    paddingBottom: SPACING.giant,
+    flexGrow: 1,
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.giant + SPACING.lg,
   },
   divider: {
     height: 1,
     backgroundColor: COLORS.border,
     marginBottom: SPACING.xxl + 4,
-  },
-  sectionBlock: {
-    marginBottom: SPACING.xxl + 4,
-  },
-  sectionBlockFirst: {
-    marginTop: SPACING.sm,
-  },
-  sectionContent: {
-    gap: SPACING.md,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: SPACING.xl,
-  },
-  sectionIconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: `${COLORS.primary}0D`,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: SPACING.md,
-  },
-  sectionTitleGroup: {
-    flex: 1,
-  },
-  sectionTitle: {
-    fontSize: FONT_SIZE.h16,
-    fontFamily: FONT_FAMILY.semibold,
-    color: COLORS.heading,
-  },
-  sectionSubtitle: {
-    fontSize: FONT_SIZE.body12,
-    fontFamily: FONT_FAMILY.regular,
-    color: COLORS.paragraph,
-    marginTop: 2,
-    lineHeight: 17,
   },
   row: {
     flexDirection: "row",
@@ -311,51 +242,6 @@ const styles = StyleSheet.create({
   },
   purposeInput: {
     textAlignVertical: "top",
-  },
-  requirementsList: {
-    gap: SPACING.md,
-  },
-  requirementRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: 10,
-    padding: SPACING.md,
-  },
-  requirementNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: `${COLORS.primary}12`,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: SPACING.md,
-    marginTop: 0,
-  },
-  requirementNumberText: {
-    fontFamily: FONT_FAMILY.semibold,
-    fontSize: FONT_SIZE.body12,
-    color: COLORS.primary,
-  },
-  requirementText: {
-    flex: 1,
-    fontSize: FONT_SIZE.body14,
-    fontFamily: FONT_FAMILY.regular,
-    color: COLORS.paragraph,
-    lineHeight: 20,
-    paddingTop: 2,
-  },
-  emptyRequirements: {
-    backgroundColor: COLORS.inputBackground,
-    borderRadius: 10,
-    padding: SPACING.xl,
-    alignItems: "center",
-  },
-  emptyRequirementsText: {
-    fontSize: FONT_SIZE.body14,
-    fontFamily: FONT_FAMILY.regular,
-    color: COLORS.placeholder,
-    textAlign: "center",
   },
   submitSection: {
     marginTop: SPACING.xl,

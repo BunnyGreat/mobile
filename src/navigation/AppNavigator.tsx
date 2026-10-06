@@ -11,7 +11,7 @@ export const AppNavigator: React.FC = () => {
   return (
     <NavigationContainer>
       <GlobalStatusBar />
-      <View style={{ flex: 1, paddingTop: insets.top }}>
+      <View style={{ flex: 1 }}>
         <RootNavigator />
       </View>
     </NavigationContainer>
