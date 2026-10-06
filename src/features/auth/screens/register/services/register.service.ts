@@ -1,4 +1,5 @@
 import { auth, db } from "../../../../../services/firebase/firebase";
+import { supabase } from "../../../../../services/supabase/supabase";
 import { uploadFileToSupabase } from "../../../../../services/supabase/storageUpload.service";
 import {
   createUserWithEmailAndPassword,
@@ -44,52 +45,55 @@ export const checkEmailAvailability = async (
 export const sendRegistrationOtpEmail = async (
   email: string,
   otpCode: string,
+  type: "registration" | "password-reset" = "registration",
 ): Promise<void> => {
   if (!email || !otpCode) {
     throw new Error("Invalid OTP email payload.");
   }
 
-  const apiKey = process.env.EXPO_PUBLIC_RESEND_API_KEY;
-  // Security: Resend API key must not be bundled in production mobile apps.
-  // If present in the runtime bundle this is a security risk. Warn in dev and fail safely.
-  if (!apiKey) {
-    throw new Error("Resend API key is not configured.");
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    throw new Error("Supabase URL not configured.");
   }
 
-  if (!__DEV__) {
-    // In production builds the client should not call Resend directly.
-    // Log a visible warning and throw so registration flow falls back to server-side flow.
-    // This prevents embedding secret API keys in the mobile bundle.
-    // Maintain existing behavior in development for debugging.
-    // eslint-disable-next-line no-console
-    console.warn("[SECURITY] Resend API key detected in client build — remove from mobile bundle and call email send from a backend.");
-    throw new Error("Email delivery is disabled in this build for security reasons.");
-  }
+  try {
+    // Call Supabase Edge Function to send OTP via Resend
+    // The Edge Function handles the Resend API key securely on the server
+    const response = await supabase.functions.invoke("send-otp", {
+      body: {
+        email,
+        otpCode,
+        type,
+      },
+    });
 
-  const resendSender = "Barangay San Isidro <noreply@barangay-san-isidro.help>"; // TODO: Replace with noreply@barangaysanisidro.ph in production
+    // Handle response errors
+    if (response.error) {
+      const errorMessage = response.error instanceof Error 
+        ? response.error.message 
+        : typeof response.error === "string"
+        ? response.error
+        : "Failed to send verification email";
+      throw new Error(errorMessage);
+    }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      from: resendSender,
-      to: [email],
-      subject: "Barangay San Isidro Verification Code",
-      html: `
-        <h2>Email Verification</h2>
-        <p>Your verification code is:</p>
-        <h1>${otpCode}</h1>
-        <p>This code expires in 5 minutes.</p>
-      `,
-    }),
-  });
+    // Check response data for success
+    if (response.data?.success === false) {
+      throw new Error(
+        response.data.error || "Failed to send verification email"
+      );
+    }
 
-  if (!response.ok) {
-    const data = await response.text();
-    throw new Error(`OTP email send failed: ${response.status} ${data}`);
+    // Verify response indicates success
+    if (!response.data?.success) {
+      throw new Error("Failed to send verification email. Please try again.");
+    }
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Failed to send verification email. Please try again.";
+    throw new Error(message);
   }
 };
 

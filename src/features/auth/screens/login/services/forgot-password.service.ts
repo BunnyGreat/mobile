@@ -25,8 +25,8 @@ export const sendForgotPasswordOtp = async (email: string): Promise<void> => {
   const otp = generateOtpCode();
   const now = Date.now();
 
-  // send email using resend via register.service helper
-  await sendRegistrationOtpEmail(email, otp);
+  // send email using resend via register.service helper with password-reset type
+  await sendRegistrationOtpEmail(email, otp, "password-reset");
 
   // persist to zustand store
   const saveEmail = useLoginStore.getState().saveForgotPasswordEmail;
@@ -46,7 +46,7 @@ export const resendForgotPasswordOtp = async (): Promise<void> => {
   const otp = generateOtpCode();
   const now = Date.now();
 
-  await sendRegistrationOtpEmail(email, otp);
+  await sendRegistrationOtpEmail(email, otp, "password-reset");
 
   state.saveResetOtp(otp);
   state.saveOtpCreatedAt(now);
