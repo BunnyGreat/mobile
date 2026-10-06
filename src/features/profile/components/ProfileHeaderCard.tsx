@@ -5,8 +5,8 @@ import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
 import type { RootStackNavigationProp } from "../../../navigation/types";
+import ProfileAvatar from "./ProfileAvatar";
 
-const placeholderImage = require("../../../../assets/icons/no-photo.png");
 const verifiedIcon = require("../../../../assets/icons/fiesta-check.png");
 
 interface Props {
@@ -66,12 +66,10 @@ const ProfileHeaderCard: React.FC<Props> = ({
         <View style={styles.avatarContainer}>
           <View style={styles.avatarRing}>
             <View style={styles.avatarInner}>
-              <Image
-                source={
-                  profilePhotoUrl ? { uri: profilePhotoUrl } : placeholderImage
-                }
-                style={styles.avatar}
-                resizeMode="cover"
+              <ProfileAvatar
+                uri={profilePhotoUrl}
+                imageStyle={styles.avatar}
+                showFailureMessage
               />
             </View>
           </View>

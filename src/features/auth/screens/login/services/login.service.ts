@@ -2,7 +2,7 @@ import { auth, db } from "../../../../../services/firebase/firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import type { LoginResponse, LoginUser } from "../types/login.types";
-import { getFileSignedOrPublicUrl } from "../../../../../services/supabase/storageUpload.service";
+import { resolveProfilePhotoUrl } from "../../../../profile/services/profilePhoto.service";
 
 export const loginUser = async (
   email: string,
@@ -28,8 +28,14 @@ export const loginUser = async (
       firstName: data.personalInformation?.firstName ?? "",
       middleName: data.personalInformation?.middleName ?? "",
       lastName: data.personalInformation?.lastName ?? "",
-      profilePhotoPath: data.personalInformation?.profilePhotoPath ?? undefined,
-      profilePhotoUrl: data.personalInformation?.profilePhotoUrl ?? undefined,
+      profilePhotoPath:
+        data.personalInformation?.profilePhotoPath ??
+        data.profilePhotoPath ??
+        undefined,
+      profilePhotoUrl:
+        data.personalInformation?.profilePhotoUrl ??
+        data.profilePhotoUrl ??
+        undefined,
     };
 
     if (status === "pending") {
@@ -55,14 +61,15 @@ export const loginUser = async (
       return { success: false, error: "Unable to sign into storage service." };
     }
 
-    let profilePhotoUrl: string | undefined = personalInformation.profilePhotoUrl;
-    if (!profilePhotoUrl && personalInformation.profilePhotoPath) {
-      try {
-        profilePhotoUrl = await getFileSignedOrPublicUrl("profile_photo", personalInformation.profilePhotoPath);
-      } catch (_err) {
-        // ignore; leave undefined if URL resolution fails
-      }
+    let profilePhotoUrl: string | undefined;
+    try {
+      profilePhotoUrl =
+        (await resolveProfilePhotoUrl(uid, data, credential.user.photoURL)) ??
+        undefined;
+    } catch (error) {
+      console.warn("[LOGIN] Failed to resolve profile photo", error);
     }
+    personalInformation.profilePhotoUrl = profilePhotoUrl;
 
     const user: LoginUser = {
       uid,

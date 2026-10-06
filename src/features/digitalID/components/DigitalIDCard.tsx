@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     marginVertical: SPACING.lg,
   },
   cardWrapper: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backfaceVisibility: "hidden",
     shadowColor: "#000",
     shadowOpacity: 0.1,

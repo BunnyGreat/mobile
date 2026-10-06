@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   watermarkContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
     opacity: 0.08,

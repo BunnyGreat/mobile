@@ -6,11 +6,7 @@ const GlobalStatusBar: React.FC = () => {
   // Use Expo's StatusBar for cross-platform handling and fall back to RN StatusBar for Android props
   return (
     <>
-      <ExpoStatusBar
-        style="dark"
-        backgroundColor="transparent"
-        translucent={true}
-      />
+      <ExpoStatusBar style="dark" />
       {Platform.OS === "android" && (
         <RNStatusBar
           translucent

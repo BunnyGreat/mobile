@@ -1,5 +1,7 @@
 import { create } from "zustand";
+import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../../../services/firebase/firebase";
+import { clearNotificationsCache } from "../services/notificationCache.service";
 import {
   fetchNotifications as fetchNotificationDocs,
   getCachedNotifications,
@@ -11,27 +13,10 @@ import type { NotificationStoreState, Notification } from "../types/notification
 
 let notificationSubscription: (() => void) | null = null;
 let currentUserUid: string | null = null;
+let authStateSubscription: (() => void) | null = null;
 
 const countUnread = (notifications: NotificationStoreState["notifications"]) =>
   notifications.filter((notification) => !notification.isRead).length;
-
-const mergeNotifications = (cached: Notification[], fresh: Notification[]): Notification[] => {
-  const byId = new Map<string, Notification>();
-
-  cached.forEach((notification) => {
-    if (notification.notificationId) {
-      byId.set(notification.notificationId, notification);
-    }
-  });
-
-  fresh.forEach((notification) => {
-    if (notification.notificationId) {
-      byId.set(notification.notificationId, notification);
-    }
-  });
-
-  return Array.from(byId.values()).sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
-};
 
 export const useNotificationStore = create<NotificationStoreState>((set, get) => ({
   notifications: [],
@@ -41,29 +26,39 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   error: null,
 
   fetchNotifications: async () => {
-    const existing = get().notifications;
+    const uid = auth.currentUser?.uid;
+    if (!uid || currentUserUid !== uid) {
+      return;
+    }
+
     set({ loading: true, error: null });
 
     try {
-      const cached = await getCachedNotifications();
-      const initial = cached.length > 0 ? cached : existing;
-      if (initial.length > 0) {
-        set({ notifications: initial, unreadCount: countUnread(initial), loading: false });
+      const cached = await getCachedNotifications(uid);
+      if (currentUserUid !== uid) {
+        return;
+      }
+      if (cached.length > 0) {
+        set({ notifications: cached, unreadCount: countUnread(cached), loading: false });
       } else {
         set({ notifications: [], unreadCount: 0, loading: false });
       }
 
-      const fresh = await fetchNotificationDocs();
-      const merged = mergeNotifications(initial, fresh);
-      set({ notifications: merged, unreadCount: countUnread(merged), loading: false, error: null });
+      const fresh = await fetchNotificationDocs(uid);
+      if (currentUserUid !== uid) {
+        return;
+      }
+      set({ notifications: fresh, unreadCount: countUnread(fresh), loading: false, error: null });
     } catch (error) {
-      const cached = await getCachedNotifications();
-      const fallback = cached.length > 0 ? cached : existing;
+      if (currentUserUid !== uid) {
+        return;
+      }
+      const cached = await getCachedNotifications(uid);
       const message = error instanceof Error ? error.message : "Unable to load notifications.";
 
       set({
-        notifications: fallback,
-        unreadCount: countUnread(fallback),
+        notifications: cached,
+        unreadCount: countUnread(cached),
         loading: false,
         error: message,
       });
@@ -71,22 +66,29 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   },
 
   refreshNotifications: async () => {
-    const existing = get().notifications;
+    const uid = auth.currentUser?.uid;
+    if (!uid || currentUserUid !== uid) {
+      return;
+    }
+
     set({ refreshing: true, error: null });
 
     try {
-      const fresh = await fetchNotificationDocs();
-      const cached = await getCachedNotifications();
-      const merged = mergeNotifications(existing.length > 0 ? existing : cached, fresh);
-      set({ notifications: merged, unreadCount: countUnread(merged), refreshing: false, error: null });
+      const fresh = await fetchNotificationDocs(uid);
+      if (currentUserUid !== uid) {
+        return;
+      }
+      set({ notifications: fresh, unreadCount: countUnread(fresh), refreshing: false, error: null });
     } catch (error) {
-      const cached = await getCachedNotifications();
-      const fallback = cached.length > 0 ? cached : existing;
+      if (currentUserUid !== uid) {
+        return;
+      }
+      const cached = await getCachedNotifications(uid);
       const message = error instanceof Error ? error.message : "Unable to refresh notifications.";
 
       set({
-        notifications: fallback,
-        unreadCount: countUnread(fallback),
+        notifications: cached,
+        unreadCount: countUnread(cached),
         refreshing: false,
         error: message,
       });
@@ -94,41 +96,84 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   },
 
   subscribeToNotifications: () => {
-    const uid = auth.currentUser?.uid ?? "";
-
-    if (notificationSubscription && currentUserUid === uid) {
+    if (authStateSubscription) {
       return () => {};
     }
 
-    if (notificationSubscription) {
-      notificationSubscription();
-      notificationSubscription = null;
-    }
+    authStateSubscription = onAuthStateChanged(auth, (user) => {
+      const uid = user?.uid ?? null;
+      if (currentUserUid === uid) {
+        return;
+      }
 
-    currentUserUid = uid;
-    notificationSubscription = subscribeToNotifications(
-      uid,
-      (notifications) => {
-        const existing = get().notifications;
-        const deduped = mergeNotifications(existing, notifications);
-        set({ notifications: deduped, unreadCount: countUnread(deduped), error: null, loading: false, refreshing: false });
-      },
-      (error) => {
-        set({ error: error.message });
-      },
-    );
+      notificationSubscription?.();
+      notificationSubscription = null;
+      if (currentUserUid && currentUserUid !== uid) {
+        void clearNotificationsCache(currentUserUid);
+      }
+      currentUserUid = uid;
+      set({
+        notifications: [],
+        unreadCount: 0,
+        loading: Boolean(uid),
+        refreshing: false,
+        error: null,
+      });
+
+      if (!uid) {
+        return;
+      }
+
+      notificationSubscription = subscribeToNotifications(
+        uid,
+        (notifications) => {
+          if (currentUserUid !== uid) {
+            return;
+          }
+          set({
+            notifications,
+            unreadCount: countUnread(notifications),
+            error: null,
+            loading: false,
+            refreshing: false,
+          });
+        },
+        (error) => {
+          if (currentUserUid === uid) {
+            set({ error: error.message });
+          }
+        },
+      );
+      void get().fetchNotifications();
+    });
 
     return () => {
+      authStateSubscription?.();
+      authStateSubscription = null;
       notificationSubscription?.();
       notificationSubscription = null;
       currentUserUid = null;
+      set({
+        notifications: [],
+        unreadCount: 0,
+        loading: false,
+        refreshing: false,
+        error: null,
+      });
     };
   },
 
   markAsRead: async (notificationId: string) => {
+    const uid = auth.currentUser?.uid;
     try {
-      await markNotificationAsRead(notificationId);
+      if (!uid || currentUserUid !== uid) {
+        throw new Error("Authentication required.");
+      }
+      await markNotificationAsRead(uid, notificationId);
 
+      if (currentUserUid !== uid) {
+        return;
+      }
       const state = get();
       const updated = state.notifications.map((notification) =>
         notification.notificationId === notificationId ? { ...notification, isRead: true } : notification,
@@ -142,13 +187,20 @@ export const useNotificationStore = create<NotificationStoreState>((set, get) =>
   },
 
   markAllAsRead: async () => {
+    const uid = auth.currentUser?.uid;
     try {
+      if (!uid || currentUserUid !== uid) {
+        throw new Error("Authentication required.");
+      }
       const state = get();
       const unreadIds = state.notifications.filter((notification) => !notification.isRead).map((notification) => notification.notificationId);
       if (unreadIds.length > 0) {
-        await markNotificationsAsRead(unreadIds);
+        await markNotificationsAsRead(uid, unreadIds);
       }
 
+      if (currentUserUid !== uid) {
+        return;
+      }
       const updated = state.notifications.map((notification) => ({ ...notification, isRead: true }));
       set({ notifications: updated, unreadCount: 0 });
     } catch (error) {

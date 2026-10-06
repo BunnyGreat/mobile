@@ -1,6 +1,10 @@
 import { auth, db } from "../../../services/firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { deletePreviousPhoto, uploadPhoto } from "./profilePhoto.service";
+import {
+  deletePreviousPhoto,
+  resolveProfilePhotoUrl,
+  uploadPhoto,
+} from "./profilePhoto.service";
 import { getFileSignedOrPublicUrl } from "../../../services/supabase/storageUpload.service";
 import { saveProfileCache } from "./profileCache.service";
 import type {
@@ -142,11 +146,18 @@ export const getProfile = async (): Promise<Profile> => {
 
   const data = userSnap.data() as Record<string, any>;
   const profile = buildProfileFromRow(data, currentUser.uid, currentUser.email);
-  // Resolve storage paths to accessible URLs where applicable
   try {
-    if (profile.profilePhotoPath) {
-      profile.profilePhotoUrl = await getFileSignedOrPublicUrl("profile_photo", profile.profilePhotoPath);
-    }
+    profile.profilePhotoUrl = await resolveProfilePhotoUrl(
+      currentUser.uid,
+      data,
+      currentUser.photoURL,
+    );
+  } catch (err) {
+    profile.profilePhotoUrl = null;
+    console.warn("[PROFILE] Failed to resolve profile photo", err);
+  }
+
+  try {
     if (profile.documents?.frontIdPath) {
       profile.documents.frontIdUrl = await getFileSignedOrPublicUrl("identification", profile.documents.frontIdPath);
     }
@@ -154,7 +165,6 @@ export const getProfile = async (): Promise<Profile> => {
       profile.documents.backIdUrl = await getFileSignedOrPublicUrl("identification", profile.documents.backIdPath);
     }
   } catch (err) {
-    // Non-fatal: leave URLs null if signed/public URL generation fails
     console.warn("[PROFILE] Failed to generate storage access URLs", err);
   }
 
@@ -208,9 +218,16 @@ export const updateProfile = async (
   const updatedData = updatedDoc.data() as Record<string, any>;
   const profile = buildProfileFromRow(updatedData, currentUser.uid, currentUser.email);
   try {
-    if (profile.profilePhotoPath) {
-      profile.profilePhotoUrl = await getFileSignedOrPublicUrl("profile_photo", profile.profilePhotoPath);
-    }
+    profile.profilePhotoUrl = await resolveProfilePhotoUrl(
+      currentUser.uid,
+      updatedData,
+      currentUser.photoURL,
+    );
+  } catch (err) {
+    profile.profilePhotoUrl = null;
+    console.warn("[PROFILE] Failed to resolve profile photo", err);
+  }
+  try {
     if (profile.documents?.frontIdPath) {
       profile.documents.frontIdUrl = await getFileSignedOrPublicUrl("identification", profile.documents.frontIdPath);
     }
@@ -236,8 +253,10 @@ export const updateProfilePhoto = async (
     throw new Error("[PROFILE] Authentication required.");
   }
 
-  if (existingPhotoPath) {
+  if (existingPhotoPath?.startsWith(`${currentUser.uid}/`)) {
     await deletePreviousPhoto(existingPhotoPath);
+  } else if (existingPhotoPath) {
+    console.warn("[PROFILE] Skipped deleting a photo outside the authenticated user's storage path.");
   }
 
   return uploadPhoto(compressedUri, currentUser.uid);

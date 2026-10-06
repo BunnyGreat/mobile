@@ -388,7 +388,7 @@ export const fetchRequests = async (): Promise<UnifiedRequest[]> => {
     .filter((request) => request.type === "appointment")
     .map((request) => request.raw as AppointmentRequest)
     .filter(Boolean);
-  const notifications = await fetchNotifications();
+  const notifications = await fetchNotifications(currentUser.uid);
   const unified = unifyRequests(
     certificates,
     appointments,

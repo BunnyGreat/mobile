@@ -1,14 +1,13 @@
 import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
+import ProfileAvatar from "./ProfileAvatar";
 
 interface ProfilePhotoPickerProps {
   photoUrl?: string | null;
   onPickPhoto: () => void;
 }
-
-const placeholderImage = require("../../../../assets/icons/no-photo.png");
 
 const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({
   photoUrl,
@@ -22,10 +21,10 @@ const ProfilePhotoPicker: React.FC<ProfilePhotoPickerProps> = ({
         activeOpacity={0.85}
       >
         <View style={styles.avatarRing}>
-          <Image
-            source={photoUrl ? { uri: photoUrl } : placeholderImage}
-            style={styles.avatar}
-            resizeMode="cover"
+          <ProfileAvatar
+            uri={photoUrl}
+            imageStyle={styles.avatar}
+            showFailureMessage
           />
         </View>
 

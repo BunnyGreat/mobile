@@ -107,7 +107,7 @@ const TermsConditionsModal: React.FC<{
 const styles = StyleSheet.create({
   safe: { flex: 1, justifyContent: "center", alignItems: "center" },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
   },
   card: {

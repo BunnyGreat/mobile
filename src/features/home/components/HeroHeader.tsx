@@ -4,9 +4,9 @@ import { useNavigation } from "@react-navigation/native";
 import type { RootStackNavigationProp } from "../../../navigation/types";
 import { useLoginStore } from "../../auth/screens/login/store/login.store";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
+import ProfileAvatar from "../../profile/components/ProfileAvatar";
 
 const logo = require("../../../../assets/images/logo.png");
-const profilePlaceholder = require("../../../../assets/icons/no-photo.png");
 const verifiedIcon = require("../../../../assets/icons/fiesta-check.png");
 
 const HeroHeader: React.FC = () => {
@@ -52,13 +52,7 @@ const HeroHeader: React.FC = () => {
         onPress={() => navigation.navigate("ProfileScreen")}
         activeOpacity={0.8}
       >
-        <Image
-          source={
-            profilePhotoUrl ? { uri: profilePhotoUrl } : profilePlaceholder
-          }
-          style={styles.avatar}
-          resizeMode="cover"
-        />
+        <ProfileAvatar uri={profilePhotoUrl} imageStyle={styles.avatar} />
       </TouchableOpacity>
     </View>
   );

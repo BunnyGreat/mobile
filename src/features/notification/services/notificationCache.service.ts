@@ -1,26 +1,45 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { auth } from "../../../services/firebase/firebase";
 import type { Notification } from "../types/notification.types";
 
-const NOTIFICATIONS_CACHE_KEY = "notification_cache";
+const NOTIFICATIONS_CACHE_PREFIX = "notification_cache";
+const LEGACY_NOTIFICATIONS_CACHE_KEY = NOTIFICATIONS_CACHE_PREFIX;
 const NOTIFICATION_READ_STATE_KEY = "notification_read_state";
 
 type NotificationReadStateMap = Record<string, boolean>;
 
-const getNotificationReadStateKey = (uid?: string) =>
-  uid ? `${NOTIFICATION_READ_STATE_KEY}_${uid}` : NOTIFICATION_READ_STATE_KEY;
+const getNotificationsCacheKey = (uid: string) => `${NOTIFICATIONS_CACHE_PREFIX}_${uid}`;
 
-export const saveNotificationsCache = async (notifications: Notification[]) => {
+const getNotificationReadStateKey = (uid: string) =>
+  `${NOTIFICATION_READ_STATE_KEY}_${uid}`;
+
+export const saveNotificationsCache = async (
+  uid: string,
+  notifications: Notification[],
+) => {
+  if (!uid) {
+    throw new Error("Authentication required to cache notifications.");
+  }
+
   try {
-    await AsyncStorage.setItem(NOTIFICATIONS_CACHE_KEY, JSON.stringify(notifications));
+    await AsyncStorage.setItem(
+      getNotificationsCacheKey(uid),
+      JSON.stringify(notifications),
+    );
   } catch (error) {
     console.warn("Failed to cache notifications", error);
   }
 };
 
-export const loadNotificationsCache = async (): Promise<Notification[]> => {
+export const loadNotificationsCache = async (
+  uid: string,
+): Promise<Notification[]> => {
+  if (!uid) {
+    return [];
+  }
+
   try {
-    const raw = await AsyncStorage.getItem(NOTIFICATIONS_CACHE_KEY);
+    await AsyncStorage.removeItem(LEGACY_NOTIFICATIONS_CACHE_KEY);
+    const raw = await AsyncStorage.getItem(getNotificationsCacheKey(uid));
     if (!raw) {
       return [];
     }
@@ -33,38 +52,56 @@ export const loadNotificationsCache = async (): Promise<Notification[]> => {
   }
 };
 
-export const saveNotificationReadState = async (notificationId: string, isRead: boolean) => {
+export const saveNotificationReadState = async (
+  uid: string,
+  notificationId: string,
+  isRead: boolean,
+) => {
+  if (!uid) {
+    throw new Error("Authentication required to update notification read state.");
+  }
+
   try {
-    const previousState = await loadNotificationReadStateMap();
+    const previousState = await loadNotificationReadStateMap(uid);
     const nextState = { ...previousState, [notificationId]: isRead };
-    const uid = auth.currentUser?.uid ?? "";
     await AsyncStorage.setItem(getNotificationReadStateKey(uid), JSON.stringify(nextState));
   } catch (error) {
     console.warn("Failed to persist notification read state", error);
   }
 };
 
-export const saveNotificationReadStates = async (notificationIds: string[]) => {
+export const saveNotificationReadStates = async (
+  uid: string,
+  notificationIds: string[],
+) => {
   if (notificationIds.length === 0) {
     return;
   }
 
+  if (!uid) {
+    throw new Error("Authentication required to update notification read state.");
+  }
+
   try {
-    const previousState = await loadNotificationReadStateMap();
+    const previousState = await loadNotificationReadStateMap(uid);
     const nextState = { ...previousState };
     notificationIds.forEach((notificationId) => {
       nextState[notificationId] = true;
     });
-    const uid = auth.currentUser?.uid ?? "";
     await AsyncStorage.setItem(getNotificationReadStateKey(uid), JSON.stringify(nextState));
   } catch (error) {
     console.warn("Failed to persist notification read state", error);
   }
 };
 
-export const loadNotificationReadStateMap = async (): Promise<NotificationReadStateMap> => {
+export const loadNotificationReadStateMap = async (
+  uid: string,
+): Promise<NotificationReadStateMap> => {
+  if (!uid) {
+    return {};
+  }
+
   try {
-    const uid = auth.currentUser?.uid ?? "";
     const raw = await AsyncStorage.getItem(getNotificationReadStateKey(uid));
     if (!raw) {
       return {};
@@ -78,9 +115,13 @@ export const loadNotificationReadStateMap = async (): Promise<NotificationReadSt
   }
 };
 
-export const clearNotificationsCache = async () => {
+export const clearNotificationsCache = async (uid: string) => {
+  if (!uid) {
+    return;
+  }
+
   try {
-    await AsyncStorage.removeItem(NOTIFICATIONS_CACHE_KEY);
+    await AsyncStorage.removeItem(getNotificationsCacheKey(uid));
   } catch (error) {
     console.warn("Failed to clear cached notifications", error);
   }

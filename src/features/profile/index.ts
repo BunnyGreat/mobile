@@ -1,6 +1,7 @@
 export * from "./hooks/useProfile";
 export * from "./hooks/useProfilePhoto";
 export * from "./hooks/useRefreshProfile";
+export { default as ProfileAvatar } from "./components/ProfileAvatar";
 export * from "./services/profile.service";
 export * from "./services/profileCache.service";
 export * from "./services/profilePhoto.service";

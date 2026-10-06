@@ -4,6 +4,7 @@ import type { Notification, NotificationType } from "../types/notification.types
 import {
   loadNotificationReadStateMap,
   loadNotificationsCache,
+  clearNotificationsCache,
   saveNotificationReadState,
   saveNotificationReadStates,
   saveNotificationsCache,
@@ -29,6 +30,16 @@ const getDateValue = (value: unknown): string => {
   return "";
 };
 
+const getRecipientUid = (data: Record<string, unknown>): string => {
+  const residentUid = data.residentUid;
+  if (typeof residentUid === "string" && residentUid.length > 0) {
+    return residentUid;
+  }
+
+  const uid = data.uid;
+  return typeof uid === "string" ? uid : "";
+};
+
 const toNotification = (
   docSnap: { id: string; data: () => Record<string, unknown> },
   readStateMap: Record<string, boolean>,
@@ -39,7 +50,7 @@ const toNotification = (
 
   return {
     notificationId: docSnap.id,
-    uid: (data.uid as string | undefined) ?? "",
+    uid: getRecipientUid(data),
     title: (data.title as string | undefined) ?? "",
     message: (data.message as string | undefined) ?? "",
     type: (data.type as Notification["type"]) ?? "announcement",
@@ -85,17 +96,8 @@ const buildNotificationsForCurrentUser = async (
     .filter((docSnap) => {
       const data = docSnap.data();
       const type = (data.type as Notification["type"] | undefined) ?? "announcement";
-      const residentUid = (data.residentUid as string | undefined) ?? "";
-
-      if (type === "announcement") {
-        return true;
-      }
-
-      if (!uid) {
-        return false;
-      }
-
-      return residentUid === uid;
+      const ownerUid = getRecipientUid(data);
+      return ownerUid === uid || (type === "announcement" && data.isBroadcast === true);
     })
     .map((docSnap) => toNotification(docSnap, readStateMap))
     .sort(sortByCreatedAtDesc);
@@ -103,32 +105,48 @@ const buildNotificationsForCurrentUser = async (
   return notifications;
 };
 
-export const fetchNotifications = async (): Promise<Notification[]> => {
-  const uid = auth.currentUser?.uid ?? "";
-  const notificationsRef = collection(db, "notifications");
-  const announcementQuery = query(notificationsRef, where("type", "==", "announcement"));
-  const residentQuery = query(notificationsRef, where("type", "in", ["appointment", "certificate"]));
+export const fetchNotifications = async (uid: string): Promise<Notification[]> => {
+  if (!uid || auth.currentUser?.uid !== uid) {
+    throw new Error("Authentication required.");
+  }
 
-  const [announcementSnapshot, residentSnapshot] = await Promise.all([
-    getDocs(announcementQuery),
+  const notificationsRef = collection(db, "notifications");
+  const residentQuery = query(notificationsRef, where("residentUid", "==", uid));
+  const legacyUserQuery = query(notificationsRef, where("uid", "==", uid));
+  const broadcastQuery = query(notificationsRef, where("isBroadcast", "==", true));
+
+  const [residentSnapshot, legacyUserSnapshot, broadcastSnapshot] = await Promise.all([
     getDocs(residentQuery),
+    getDocs(legacyUserQuery),
+    getDocs(broadcastQuery),
   ]);
 
-  const readStateMap = await loadNotificationReadStateMap();
+  if (auth.currentUser?.uid !== uid) {
+    throw new Error("Authentication changed while loading notifications.");
+  }
+  const readStateMap = await loadNotificationReadStateMap(uid);
   const notifications = await buildNotificationsForCurrentUser(
     uid,
-    [announcementSnapshot, residentSnapshot],
+    [residentSnapshot, legacyUserSnapshot, broadcastSnapshot],
     readStateMap,
   );
 
   const deduped = mergeNotificationsById([], notifications);
-  await saveNotificationsCache(deduped);
+  await saveNotificationsCache(uid, deduped);
+  if (auth.currentUser?.uid !== uid) {
+    await clearNotificationsCache(uid);
+    throw new Error("Authentication changed while loading notifications.");
+  }
   return deduped;
 };
 
-export const getCachedNotifications = async (): Promise<Notification[]> => {
-  const cached = await loadNotificationsCache();
-  const readStateMap = await loadNotificationReadStateMap();
+export const getCachedNotifications = async (uid: string): Promise<Notification[]> => {
+  if (!uid) {
+    return [];
+  }
+
+  const cached = await loadNotificationsCache(uid);
+  const readStateMap = await loadNotificationReadStateMap(uid);
 
   return cached
     .map((notification) => ({
@@ -138,12 +156,18 @@ export const getCachedNotifications = async (): Promise<Notification[]> => {
     .sort(sortByCreatedAtDesc);
 };
 
-export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
-  await saveNotificationReadState(notificationId, true);
+export const markNotificationAsRead = async (
+  uid: string,
+  notificationId: string,
+): Promise<void> => {
+  await saveNotificationReadState(uid, notificationId, true);
 };
 
-export const markNotificationsAsRead = async (notificationIds: string[]): Promise<void> => {
-  await saveNotificationReadStates(notificationIds);
+export const markNotificationsAsRead = async (
+  uid: string,
+  notificationIds: string[],
+): Promise<void> => {
+  await saveNotificationReadStates(uid, notificationIds);
 };
 
 export const subscribeToNotifications = (
@@ -151,24 +175,40 @@ export const subscribeToNotifications = (
   onUpdate: (notifications: Notification[]) => void,
   onError?: (error: Error) => void,
 ): (() => void) => {
-  const notificationsRef = collection(db, "notifications");
-  const announcementQuery = query(notificationsRef, where("type", "==", "announcement"));
-  const residentQuery = query(notificationsRef, where("type", "in", ["appointment", "certificate"]));
+  if (!uid || auth.currentUser?.uid !== uid) {
+    throw new Error("Authentication required.");
+  }
 
-  let announcementDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
+  const notificationsRef = collection(db, "notifications");
+  const residentQuery = query(notificationsRef, where("residentUid", "==", uid));
+  const legacyUserQuery = query(notificationsRef, where("uid", "==", uid));
+  const broadcastQuery = query(notificationsRef, where("isBroadcast", "==", true));
+
   let residentDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
+  let legacyUserDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
+  let broadcastDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
 
   const emitNotifications = async () => {
-    const readStateMap = await loadNotificationReadStateMap();
+    if (auth.currentUser?.uid !== uid) {
+      return;
+    }
+    const readStateMap = await loadNotificationReadStateMap(uid);
+    if (auth.currentUser?.uid !== uid) {
+      return;
+    }
     const notifications = await buildNotificationsForCurrentUser(
       uid,
-      [{ docs: announcementDocs }, { docs: residentDocs }],
+      [{ docs: residentDocs }, { docs: legacyUserDocs }, { docs: broadcastDocs }],
       readStateMap,
     );
 
     const deduped = mergeNotificationsById([], notifications);
-    await saveNotificationsCache(deduped);
-    onUpdate(deduped);
+    await saveNotificationsCache(uid, deduped);
+    if (auth.currentUser?.uid === uid) {
+      onUpdate(deduped);
+    } else {
+      await clearNotificationsCache(uid);
+    }
   };
 
   const handleError = (error: Error) => {
@@ -176,30 +216,36 @@ export const subscribeToNotifications = (
     onError?.(error);
   };
 
-  const unsubscribeAnnouncement = onSnapshot(
-    announcementQuery,
+  const unsubscribeResident = onSnapshot(
+    residentQuery,
     (snapshot) => {
-      announcementDocs = snapshot.docs;
+      residentDocs = snapshot.docs;
       void emitNotifications();
     },
     (error) => handleError(error as Error),
   );
 
-  const unsubscribeResident = onSnapshot(
-    residentQuery,
+  const unsubscribeLegacyUser = onSnapshot(
+    legacyUserQuery,
     (snapshot) => {
-      residentDocs = snapshot.docs.filter((docSnap) => {
-        const data = docSnap.data();
-        const residentUid = (data.residentUid as string | undefined) ?? "";
-        return !uid || residentUid === uid;
-      });
+      legacyUserDocs = snapshot.docs;
+      void emitNotifications();
+    },
+    (error) => handleError(error as Error),
+  );
+
+  const unsubscribeBroadcast = onSnapshot(
+    broadcastQuery,
+    (snapshot) => {
+      broadcastDocs = snapshot.docs;
       void emitNotifications();
     },
     (error) => handleError(error as Error),
   );
 
   return () => {
-    unsubscribeAnnouncement();
     unsubscribeResident();
+    unsubscribeLegacyUser();
+    unsubscribeBroadcast();
   };
 };

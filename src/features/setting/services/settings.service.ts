@@ -2,7 +2,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../../services/firebase/firebase";
 import { signOut } from "firebase/auth";
 import type { SettingsProfile } from "../types/settings.types";
-import { getFileSignedOrPublicUrl } from "../../../services/supabase/storageUpload.service";
+import { resolveProfilePhotoUrl } from "../../profile/services/profilePhoto.service";
 
 const buildFullName = (firstName?: string, middleName?: string, lastName?: string) => {
   return [
@@ -43,17 +43,19 @@ export const getSettingsProfile = async (): Promise<SettingsProfile> => {
   const data = userSnap.data() as Record<string, any>;
   const personalInformation = data.personalInformation ?? {};
 
-  let profilePhotoUrl = personalInformation.profilePhotoUrl;
-  if (!profilePhotoUrl && personalInformation.profilePhotoPath) {
-    try {
-      profilePhotoUrl = await getFileSignedOrPublicUrl("profile_photo", personalInformation.profilePhotoPath);
-    } catch (err) {
-      // ignore
-    }
+  let profilePhotoUrl: string | null = null;
+  try {
+    profilePhotoUrl = await resolveProfilePhotoUrl(
+      user.uid,
+      data,
+      user.photoURL,
+    );
+  } catch (error) {
+    console.warn("[SETTINGS] Failed to resolve profile photo", error);
   }
 
   return {
-    profilePhotoUrl,
+    profilePhotoUrl: profilePhotoUrl ?? undefined,
     fullName:
       buildFullName(
         personalInformation.firstName,

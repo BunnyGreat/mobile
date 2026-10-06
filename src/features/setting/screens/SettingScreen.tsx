@@ -6,7 +6,6 @@ import {
   Text,
   Alert,
   TouchableOpacity,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
@@ -22,6 +21,7 @@ import AboutApplicationModal from "../components/modals/AboutApplicationModal";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../theme";
 import { useSettingsStore } from "../store/settings.store";
 import type { RootStackNavigationProp } from "../../../navigation/types";
+import ProfileAvatar from "../../profile/components/ProfileAvatar";
 
 const SettingScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -107,9 +107,9 @@ const SettingScreen: React.FC = () => {
           >
             <View style={styles.avatarContainer}>
               {profile?.profilePhotoUrl ? (
-                <Image
-                  source={{ uri: profile.profilePhotoUrl }}
-                  style={styles.avatarImage}
+                <ProfileAvatar
+                  uri={profile.profilePhotoUrl}
+                  imageStyle={styles.avatarImage}
                 />
               ) : (
                 <View style={styles.avatarPlaceholder}>
