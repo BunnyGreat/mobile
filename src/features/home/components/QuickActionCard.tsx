@@ -40,36 +40,30 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({ item }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 18,
-    paddingVertical: SPACING.lg,
-    paddingHorizontal: SPACING.md,
+    width: 72,
     alignItems: "center",
-    justifyContent: "center",
-    width: "48%",
-    minHeight: 132,
-    marginBottom: SPACING.md,
-    ...SHADOWS.small,
+    paddingVertical: SPACING.xs,
   },
   cardPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.95,
   },
   iconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: "#F2F7FF",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
+    ...SHADOWS.small,
   },
   title: {
     fontFamily: FONT_FAMILY.semibold,
-    fontSize: FONT_SIZE.body14,
+    fontSize: FONT_SIZE.body12,
     color: COLORS.heading,
     textAlign: "center",
-    lineHeight: 20,
+    lineHeight: 16,
   },
 });
 

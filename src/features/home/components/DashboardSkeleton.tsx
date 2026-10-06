@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, View } from "react-native";
 import {
   COLORS,
   FONT_FAMILY,
@@ -111,17 +111,23 @@ const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({
 
       <View style={styles.quickActionsSection}>
         <SkeletonBlock height={20} width={120} />
-        <View style={styles.quickActionsGrid}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.quickActionsGrid}
+        >
           {[0, 1, 2, 3].map((item) => (
-            <SkeletonBlock
-              key={item}
-              height={132}
-              width="48%"
-              radius={18}
-              style={styles.quickActionCard}
-            />
+            <View key={item} style={styles.quickActionCard}>
+              <SkeletonBlock width={56} height={56} radius={28} />
+              <SkeletonBlock
+                height={12}
+                width={64}
+                radius={6}
+                style={styles.quickActionLabel}
+              />
+            </View>
           ))}
-        </View>
+        </ScrollView>
       </View>
     </Animated.View>
   );
@@ -183,12 +189,17 @@ const styles = StyleSheet.create({
   },
   quickActionsGrid: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    alignItems: "flex-start",
+    columnGap: SPACING.sm,
     marginTop: SPACING.md,
   },
   quickActionCard: {
+    width: 72,
+    alignItems: "center",
     marginBottom: SPACING.md,
+  },
+  quickActionLabel: {
+    marginTop: SPACING.xs,
   },
   skeletonBase: {
     backgroundColor: "#E5E7EB",
