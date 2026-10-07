@@ -6,7 +6,8 @@ export type CertificateType =
   | "barangay_clearance"
   | "certificate_of_indigency"
   | "certificate_of_residency"
-  | "Barangay Certification";
+  | "Barangay Certification"
+  | "Certificate of Indigency";
 export type RequestType = "certificate" | "appointment";
 
 export interface CertificateRequest {

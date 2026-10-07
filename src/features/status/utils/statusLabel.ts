@@ -29,6 +29,8 @@ export const getCertificateTypeLabel = (type: CertificateType): string => {
       return "Barangay Clearance";
     case "certificate_of_indigency":
       return "Certificate of Indigency";
+    case "Certificate of Indigency":
+      return "Certificate of Indigency";
     case "certificate_of_residency":
       return "Certificate of Residency";
     case "Barangay Certification":

@@ -5,12 +5,20 @@ import { generateReferenceNumber } from "../utils/generateReferenceNumber";
 
 export type CertificateRequestType =
   | "Barangay Clearance"
-  | "Barangay Certification";
+  | "Barangay Certification"
+  | "Certificate of Indigency";
+
+export interface CertificateFamilyInformation {
+  name: string;
+  purpose: string;
+  whereItWillBeUsed: string;
+}
 
 export const submitCertificateRequest = async (
   profile: Profile,
   certificateType: CertificateRequestType,
   purpose?: string,
+  familyInformation?: CertificateFamilyInformation,
 ): Promise<string> => {
   const currentUser = auth.currentUser;
 
@@ -24,11 +32,28 @@ export const submitCertificateRequest = async (
     );
   }
 
-  const requestPurpose =
-    certificateType === "Barangay Clearance" ? purpose?.trim() : undefined;
+  const requiresPurpose = certificateType !== "Barangay Certification";
+  const requestPurpose = requiresPurpose ? purpose?.trim() : undefined;
 
-  if (certificateType === "Barangay Clearance" && !requestPurpose) {
+  if (requiresPurpose && !requestPurpose) {
     throw new Error("Purpose is required.");
+  }
+
+  const requestFamilyInformation = familyInformation
+    ? {
+        name: familyInformation.name.trim(),
+        purpose: familyInformation.purpose.trim(),
+        whereItWillBeUsed: familyInformation.whereItWillBeUsed.trim(),
+      }
+    : undefined;
+
+  if (
+    requestFamilyInformation &&
+    (!requestFamilyInformation.name ||
+      !requestFamilyInformation.purpose ||
+      !requestFamilyInformation.whereItWillBeUsed)
+  ) {
+    throw new Error("Complete all family information fields.");
   }
 
   const requestId = generateReferenceNumber();
@@ -40,8 +65,11 @@ export const submitCertificateRequest = async (
     requestId,
     uid: currentUser.uid,
     certificateType,
-    ...(certificateType === "Barangay Clearance"
+    ...(requiresPurpose
       ? { purpose: requestPurpose }
+      : {}),
+    ...(requestFamilyInformation
+      ? { familyInformation: requestFamilyInformation }
       : {}),
     residentInformation: {
       firstName: profile.personalInformation.firstName,

@@ -4,6 +4,7 @@ import { useCertificateStore } from "../store/certificate.store";
 import { useProfileStore } from "../../profile/store/profile.store";
 import {
   submitCertificateRequest,
+  type CertificateFamilyInformation,
   type CertificateRequestType,
 } from "../services/barangayClearance.service";
 import { validateBarangayClearance } from "../services/certificateValidation.service";
@@ -42,13 +43,28 @@ export const useCertificateRequest = () => {
     [setSelectedCertificateTypeId],
   );
 
-  const validate = useCallback((certificateType: CertificateRequestType) => {
-    const validationErrors =
+  const validate = useCallback((
+    certificateType: CertificateRequestType,
+    familyInformation?: CertificateFamilyInformation,
+  ) => {
+    const validationErrors: Record<string, string> =
       certificateType === "Barangay Clearance"
         ? validateBarangayClearance({ purpose })
-        : {};
+        : certificateType === "Certificate of Indigency" && !purpose.trim()
+          ? { purpose: "Please select or enter a purpose for your request." }
+          : {};
 
-    if (certificateType === "Barangay Certification") {
+    if (certificateType === "Certificate of Indigency" && familyInformation) {
+      if (!familyInformation.name.trim()) {
+        validationErrors.familyName = "Enter the name of the person.";
+      }
+      if (!familyInformation.whereItWillBeUsed.trim()) {
+        validationErrors.whereItWillBeUsed =
+          "Enter where the certificate will be used.";
+      }
+    }
+
+    if (certificateType !== "Barangay Clearance") {
       if (!profile) {
         validationErrors.profile = "Resident profile must be loaded before submitting.";
       } else {
@@ -82,6 +98,7 @@ export const useCertificateRequest = () => {
 
   const submitRequest = useCallback(async (
     certificateType: CertificateRequestType = "Barangay Clearance",
+    familyInformation?: CertificateFamilyInformation,
   ) => {
     if (!profile) {
       setErrors({
@@ -91,7 +108,7 @@ export const useCertificateRequest = () => {
       return null;
     }
 
-    if (!validate(certificateType)) {
+    if (!validate(certificateType, familyInformation)) {
       return null;
     }
 
@@ -101,7 +118,8 @@ export const useCertificateRequest = () => {
       const requestId = await submitCertificateRequest(
         profile,
         certificateType,
-        certificateType === "Barangay Clearance" ? purpose : undefined,
+        certificateType !== "Barangay Certification" ? purpose : undefined,
+        familyInformation,
       );
       return requestId;
     } catch (error: unknown) {

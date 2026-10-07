@@ -10,9 +10,8 @@ export const CERTIFICATE_TYPES: CertificateTypeItem[] = [
   {
     id: "certificate-of-indigency",
     title: "Certificate of Indigency",
-    description: "Coming soon",
-    disabled: true,
-    subtitle: "Coming Soon",
+    description: "Apply for assistance with a Certificate of Indigency.",
+    disabled: false,
   },
   {
     id: "barangay-certification",

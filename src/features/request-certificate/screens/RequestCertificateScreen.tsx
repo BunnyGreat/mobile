@@ -1,6 +1,9 @@
 import React from "react";
 import {
+  Alert,
   Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -41,6 +44,7 @@ const getCertificateIcon = (id: string) => {
 };
 
 const RequestCertificateScreen = () => {
+  const [indigencyModalVisible, setIndigencyModalVisible] = React.useState(false);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { certificateTypes, selectCertificateType } = useCertificateRequest();
@@ -58,6 +62,8 @@ const RequestCertificateScreen = () => {
               navigation.navigate("BarangayClearance");
             } else if (item.id === "barangay-certification") {
               navigation.navigate("BarangayCertification");
+            } else if (item.id === "certificate-of-indigency") {
+              setIndigencyModalVisible(true);
             }
           }
         }}
@@ -144,6 +150,91 @@ const RequestCertificateScreen = () => {
           <View style={styles.grid}>{certificateTypes.map(renderItem)}</View>
         </View>
       </ScrollView>
+      <Modal
+        visible={indigencyModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIndigencyModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close Certificate of Indigency options"
+            style={styles.modalBackdrop}
+            onPress={() => setIndigencyModalVisible(false)}
+          />
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleGroup}>
+                <Text style={styles.modalTitle}>Certificate of Indigency</Text>
+                <Text style={styles.modalDescription}>
+                  Who is this certificate for?
+                </Text>
+              </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={() => setIndigencyModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <Feather name="x" size={20} color={COLORS.paragraph} />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              accessibilityRole="button"
+              activeOpacity={0.75}
+              style={styles.choiceCard}
+              onPress={() => {
+                setIndigencyModalVisible(false);
+                navigation.navigate("CertificateOfIndigency");
+              }}
+            >
+              <View style={styles.choiceIcon}>
+                <Feather name="user" size={20} color={COLORS.primary} />
+              </View>
+              <View style={styles.choiceTextGroup}>
+                <Text style={styles.choiceTitle}>Pang-sarili</Text>
+                <Text style={styles.choiceDescription}>
+                  Apply using your registered resident information.
+                </Text>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={20}
+                color={COLORS.placeholder}
+              />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              accessibilityRole="button"
+              activeOpacity={0.75}
+              style={styles.choiceCard}
+              onPress={() => {
+                setIndigencyModalVisible(false);
+                navigation.navigate("CertificateOfIndigency", {
+                  mode: "relative",
+                });
+              }}
+            >
+              <View style={styles.choiceIcon}>
+                <Feather name="users" size={20} color={COLORS.primary} />
+              </View>
+              <View style={styles.choiceTextGroup}>
+                <Text style={styles.choiceTitle}>Pang-kamaganak</Text>
+                <Text style={styles.choiceDescription}>
+                  Request a certificate for a family member.
+                </Text>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={20}
+                color={COLORS.placeholder}
+              />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -269,6 +360,89 @@ const styles = StyleSheet.create({
   },
   cardChevron: {
     marginLeft: SPACING.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: SPACING.xl,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+  },
+  modalBackdrop: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+  },
+  modalCard: {
+    borderRadius: 20,
+    backgroundColor: COLORS.white,
+    padding: SPACING.lg,
+    gap: SPACING.md,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: SPACING.xs,
+  },
+  modalTitleGroup: {
+    flex: 1,
+    paddingRight: SPACING.sm,
+  },
+  modalTitle: {
+    fontFamily: FONT_FAMILY.bold,
+    fontSize: FONT_SIZE.h18,
+    color: COLORS.heading,
+  },
+  modalDescription: {
+    fontFamily: FONT_FAMILY.regular,
+    fontSize: FONT_SIZE.body14,
+    lineHeight: 20,
+    color: COLORS.paragraph,
+    marginTop: SPACING.xs,
+  },
+  modalCloseButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.inputBackground,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  choiceCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 76,
+    padding: SPACING.md,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.white,
+  },
+  choiceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: `${COLORS.primary}0D`,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: SPACING.md,
+  },
+  choiceTextGroup: {
+    flex: 1,
+    paddingRight: SPACING.sm,
+  },
+  choiceTitle: {
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body14,
+    color: COLORS.heading,
+    marginBottom: 2,
+  },
+  choiceDescription: {
+    fontFamily: FONT_FAMILY.regular,
+    fontSize: FONT_SIZE.body12,
+    lineHeight: 17,
+    color: COLORS.paragraph,
   },
 });
 

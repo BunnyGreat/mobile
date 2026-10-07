@@ -28,6 +28,7 @@ export type RootStackParamList = {
   RequestCertificateScreen: undefined;
   BarangayClearance: undefined;
   BarangayCertification: undefined;
+  CertificateOfIndigency: { mode?: "self" | "relative" } | undefined;
   AnnouncementScreen: undefined;
   FeedbackScreen: undefined;
   AppointmentScreen: undefined;
