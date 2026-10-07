@@ -97,7 +97,11 @@ const buildNotificationsForCurrentUser = async (
       const data = docSnap.data();
       const type = (data.type as Notification["type"] | undefined) ?? "announcement";
       const ownerUid = getRecipientUid(data);
-      return ownerUid === uid || (type === "announcement" && data.isBroadcast === true);
+      return (
+        ownerUid === uid ||
+        data.target === "all" ||
+        (type === "announcement" && data.isBroadcast === true)
+      );
     })
     .map((docSnap) => toNotification(docSnap, readStateMap))
     .sort(sortByCreatedAtDesc);
@@ -113,11 +117,18 @@ export const fetchNotifications = async (uid: string): Promise<Notification[]> =
   const notificationsRef = collection(db, "notifications");
   const residentQuery = query(notificationsRef, where("residentUid", "==", uid));
   const legacyUserQuery = query(notificationsRef, where("uid", "==", uid));
+  const broadcastTargetQuery = query(notificationsRef, where("target", "==", "all"));
   const broadcastQuery = query(notificationsRef, where("isBroadcast", "==", true));
 
-  const [residentSnapshot, legacyUserSnapshot, broadcastSnapshot] = await Promise.all([
+  const [
+    residentSnapshot,
+    legacyUserSnapshot,
+    broadcastTargetSnapshot,
+    broadcastSnapshot,
+  ] = await Promise.all([
     getDocs(residentQuery),
     getDocs(legacyUserQuery),
+    getDocs(broadcastTargetQuery),
     getDocs(broadcastQuery),
   ]);
 
@@ -127,7 +138,12 @@ export const fetchNotifications = async (uid: string): Promise<Notification[]> =
   const readStateMap = await loadNotificationReadStateMap(uid);
   const notifications = await buildNotificationsForCurrentUser(
     uid,
-    [residentSnapshot, legacyUserSnapshot, broadcastSnapshot],
+    [
+      residentSnapshot,
+      legacyUserSnapshot,
+      broadcastTargetSnapshot,
+      broadcastSnapshot,
+    ],
     readStateMap,
   );
 
@@ -182,10 +198,12 @@ export const subscribeToNotifications = (
   const notificationsRef = collection(db, "notifications");
   const residentQuery = query(notificationsRef, where("residentUid", "==", uid));
   const legacyUserQuery = query(notificationsRef, where("uid", "==", uid));
+  const broadcastTargetQuery = query(notificationsRef, where("target", "==", "all"));
   const broadcastQuery = query(notificationsRef, where("isBroadcast", "==", true));
 
   let residentDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
   let legacyUserDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
+  let broadcastTargetDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
   let broadcastDocs: Array<{ id: string; data: () => Record<string, unknown> }> = [];
 
   const emitNotifications = async () => {
@@ -198,7 +216,12 @@ export const subscribeToNotifications = (
     }
     const notifications = await buildNotificationsForCurrentUser(
       uid,
-      [{ docs: residentDocs }, { docs: legacyUserDocs }, { docs: broadcastDocs }],
+      [
+        { docs: residentDocs },
+        { docs: legacyUserDocs },
+        { docs: broadcastTargetDocs },
+        { docs: broadcastDocs },
+      ],
       readStateMap,
     );
 
@@ -234,6 +257,15 @@ export const subscribeToNotifications = (
     (error) => handleError(error as Error),
   );
 
+  const unsubscribeBroadcastTarget = onSnapshot(
+    broadcastTargetQuery,
+    (snapshot) => {
+      broadcastTargetDocs = snapshot.docs;
+      void emitNotifications();
+    },
+    (error) => handleError(error as Error),
+  );
+
   const unsubscribeBroadcast = onSnapshot(
     broadcastQuery,
     (snapshot) => {
@@ -246,6 +278,7 @@ export const subscribeToNotifications = (
   return () => {
     unsubscribeResident();
     unsubscribeLegacyUser();
+    unsubscribeBroadcastTarget();
     unsubscribeBroadcast();
   };
 };
