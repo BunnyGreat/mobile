@@ -5,6 +5,7 @@ import { useProfileStore } from "../../profile/store/profile.store";
 import {
   submitCertificateRequest,
   type CertificateFamilyInformation,
+  type CertificateIndigencyRequestFor,
   type CertificateRequestType,
 } from "../services/barangayClearance.service";
 import { validateBarangayClearance } from "../services/certificateValidation.service";
@@ -46,6 +47,7 @@ export const useCertificateRequest = () => {
   const validate = useCallback((
     certificateType: CertificateRequestType,
     familyInformation?: CertificateFamilyInformation,
+    requestFor?: CertificateIndigencyRequestFor,
   ) => {
     const validationErrors: Record<string, string> =
       certificateType === "Barangay Clearance"
@@ -58,10 +60,22 @@ export const useCertificateRequest = () => {
       if (!familyInformation.name.trim()) {
         validationErrors.familyName = "Enter the name of the person.";
       }
+      if (!familyInformation.relationship.trim()) {
+        validationErrors.relationship = "Enter the relationship to the person.";
+      }
       if (!familyInformation.whereItWillBeUsed.trim()) {
         validationErrors.whereItWillBeUsed =
           "Enter where the certificate will be used.";
       }
+    }
+
+    if (certificateType === "Certificate of Indigency" && !requestFor) {
+      validationErrors.requestFor = "Select who the certificate is for.";
+    }
+
+    if (requestFor === "relative" && !familyInformation) {
+      validationErrors.familyName =
+        "Complete the family information for this request.";
     }
 
     if (certificateType !== "Barangay Clearance") {
@@ -99,6 +113,7 @@ export const useCertificateRequest = () => {
   const submitRequest = useCallback(async (
     certificateType: CertificateRequestType = "Barangay Clearance",
     familyInformation?: CertificateFamilyInformation,
+    requestFor?: CertificateIndigencyRequestFor,
   ) => {
     if (!profile) {
       setErrors({
@@ -108,7 +123,7 @@ export const useCertificateRequest = () => {
       return null;
     }
 
-    if (!validate(certificateType, familyInformation)) {
+    if (!validate(certificateType, familyInformation, requestFor)) {
       return null;
     }
 
@@ -120,6 +135,7 @@ export const useCertificateRequest = () => {
         certificateType,
         certificateType !== "Barangay Certification" ? purpose : undefined,
         familyInformation,
+        requestFor,
       );
       return requestId;
     } catch (error: unknown) {

@@ -15,7 +15,9 @@ import { Feather } from "@expo/vector-icons";
 import { AppButton, AppInput } from "../../../components";
 import { useProfileStore } from "../../../features/profile/store/profile.store";
 import { useCertificateRequest } from "../hooks/useCertificateRequest";
-import type { CertificateFamilyInformation } from "../services/barangayClearance.service";
+import type {
+  CertificateFamilyInformation,
+} from "../services/barangayClearance.service";
 import { INDIGENCY_PURPOSES } from "../constants/indigencyPurposes";
 import {
   CertificateSection,
@@ -36,6 +38,7 @@ const CertificateOfIndigencyScreen: React.FC = () => {
   const { purpose, setPurpose, errors, isSubmitting, submitRequest } =
     useCertificateRequest();
   const [familyName, setFamilyName] = React.useState("");
+  const [familyRelationship, setFamilyRelationship] = React.useState("");
   const [whereItWillBeUsed, setWhereItWillBeUsed] = React.useState("");
 
   useEffect(() => {
@@ -69,6 +72,7 @@ const CertificateOfIndigencyScreen: React.FC = () => {
       isRelativeRequest
         ? {
             name: familyName,
+            relationship: familyRelationship,
             purpose,
             whereItWillBeUsed,
           }
@@ -76,6 +80,7 @@ const CertificateOfIndigencyScreen: React.FC = () => {
     const requestId = await submitRequest(
       "Certificate of Indigency",
       familyInformation,
+      isRelativeRequest ? "relative" : "self",
     );
     if (!requestId) {
       return;
@@ -157,6 +162,14 @@ const CertificateOfIndigencyScreen: React.FC = () => {
               onChangeText={setFamilyName}
               placeholder="Enter the person's name"
               error={errors.familyName}
+              required
+            />
+            <AppInput
+              label="Relationship"
+              value={familyRelationship}
+              onChangeText={setFamilyRelationship}
+              placeholder="Enter your relationship to the person"
+              error={errors.relationship}
               required
             />
             <View>

@@ -10,15 +10,19 @@ export type CertificateRequestType =
 
 export interface CertificateFamilyInformation {
   name: string;
+  relationship: string;
   purpose: string;
   whereItWillBeUsed: string;
 }
+
+export type CertificateIndigencyRequestFor = "self" | "relative";
 
 export const submitCertificateRequest = async (
   profile: Profile,
   certificateType: CertificateRequestType,
   purpose?: string,
   familyInformation?: CertificateFamilyInformation,
+  requestFor?: CertificateIndigencyRequestFor,
 ): Promise<string> => {
   const currentUser = auth.currentUser;
 
@@ -39,9 +43,32 @@ export const submitCertificateRequest = async (
     throw new Error("Purpose is required.");
   }
 
+  if (
+    certificateType === "Certificate of Indigency" &&
+    !requestFor
+  ) {
+    throw new Error("Specify whether the request is for yourself or a relative.");
+  }
+
+  if (
+    certificateType !== "Certificate of Indigency" &&
+    (requestFor || familyInformation)
+  ) {
+    throw new Error("Family information is only valid for indigency requests.");
+  }
+
+  if (requestFor === "self" && familyInformation) {
+    throw new Error("Family information is not valid for a self request.");
+  }
+
+  if (requestFor === "relative" && !familyInformation) {
+    throw new Error("Family information is required for a relative request.");
+  }
+
   const requestFamilyInformation = familyInformation
     ? {
         name: familyInformation.name.trim(),
+        relationship: familyInformation.relationship.trim(),
         purpose: familyInformation.purpose.trim(),
         whereItWillBeUsed: familyInformation.whereItWillBeUsed.trim(),
       }
@@ -50,6 +77,7 @@ export const submitCertificateRequest = async (
   if (
     requestFamilyInformation &&
     (!requestFamilyInformation.name ||
+      !requestFamilyInformation.relationship ||
       !requestFamilyInformation.purpose ||
       !requestFamilyInformation.whereItWillBeUsed)
   ) {
@@ -67,6 +95,9 @@ export const submitCertificateRequest = async (
     certificateType,
     ...(requiresPurpose
       ? { purpose: requestPurpose }
+      : {}),
+    ...(certificateType === "Certificate of Indigency"
+      ? { requestFor }
       : {}),
     ...(requestFamilyInformation
       ? { familyInformation: requestFamilyInformation }
