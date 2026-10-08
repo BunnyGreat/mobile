@@ -8,8 +8,9 @@ export interface LoginStore {
 
 	// Forgot / Reset flow
 	forgotPasswordEmail: string | null;
-	resetOtp: string | null;
-	otpCreatedAt: number | null;
+	resetChallengeId: string | null;
+	otpExpiresAt: number | null;
+	resetAuthorization: string | null;
 
 	setUser: (user: LoginUser | null) => void;
 	setLoading: (value: boolean) => void;
@@ -19,8 +20,8 @@ export interface LoginStore {
 
 	// Reset flow methods
 	saveForgotPasswordEmail: (email: string) => void;
-	saveResetOtp: (otp: string) => void;
-	saveOtpCreatedAt: (ts: number | null) => void;
+	saveResetChallenge: (challengeId: string, expiresAt: number) => void;
+	saveResetAuthorization: (authorization: string) => void;
 	clearResetFlow: () => void;
 }
 
@@ -31,31 +32,44 @@ export const useLoginStore = create<LoginStore>((set) => ({
 
 	// Forgot / Reset flow
 	forgotPasswordEmail: null,
-	resetOtp: null,
-	otpCreatedAt: null,
+	resetChallengeId: null,
+	otpExpiresAt: null,
+	resetAuthorization: null,
 
 	setUser: (user) => set(() => ({ user })),
 	setLoading: (value) => set(() => ({ isLoading: value })),
 	setError: (message) => set(() => ({ error: message })),
 
-	logout: () => set(() => ({ user: null })),
+	logout: () =>
+		set(() => ({
+			user: null,
+			forgotPasswordEmail: null,
+			resetChallengeId: null,
+			otpExpiresAt: null,
+			resetAuthorization: null,
+		})),
 
 	clear: () =>
 		set(() => ({
 			user: null,
 			isLoading: false,
 			error: null,
+			forgotPasswordEmail: null,
+			resetChallengeId: null,
+			otpExpiresAt: null,
+			resetAuthorization: null,
 		})),
 
 	// Reset flow methods
 	saveForgotPasswordEmail: (email) => set(() => ({ forgotPasswordEmail: email })),
-	saveResetOtp: (otp) => set(() => ({ resetOtp: otp })),
-	saveOtpCreatedAt: (ts) => set(() => ({ otpCreatedAt: ts })),
+	saveResetChallenge: (challengeId, expiresAt) =>
+		set(() => ({ resetChallengeId: challengeId, otpExpiresAt: expiresAt, resetAuthorization: null })),
+	saveResetAuthorization: (authorization) => set(() => ({ resetAuthorization: authorization })),
 	clearResetFlow: () =>
 		set(() => ({
 			forgotPasswordEmail: null,
-			resetOtp: null,
-			otpCreatedAt: null,
+			resetChallengeId: null,
+			otpExpiresAt: null,
+			resetAuthorization: null,
 		})),
 }));
-

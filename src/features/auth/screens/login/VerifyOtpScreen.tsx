@@ -1,7 +1,7 @@
 /**
  * Verify OTP Screen
  * Allows users to enter the 6-digit verification code received via email.
- * UI only - no backend logic.
+ * Verifies a server-issued OTP before opening the reset form.
  */
 
 import React, { useEffect, useState } from "react";
@@ -20,36 +20,39 @@ import AppButton from "../../../../components/ui/AppButton";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
 import { useLoginStore } from "./store/login.store";
-import { resendForgotPasswordOtp } from "./services/forgot-password.service";
+import {
+  resendForgotPasswordOtp,
+  verifyForgotPasswordOtp,
+} from "./services/forgot-password.service";
 
 const VerifyOtpScreen: React.FC = () => {
   const [otp, setOtp] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [isResending, setIsResending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const navigation = useNavigation<RootStackNavigationProp>();
   const forgotEmail = useLoginStore((s) => s.forgotPasswordEmail);
-  const storedOtp = useLoginStore((s) => s.resetOtp);
-  const otpCreatedAt = useLoginStore((s) => s.otpCreatedAt);
+  const otpExpiresAt = useLoginStore((s) => s.otpExpiresAt);
   const otpInputsRef = React.useRef<Array<TextInput | null>>([]);
 
   useEffect(() => {
-    // initialize countdown from otpCreatedAt (5 minutes validity)
-    if (!otpCreatedAt) {
+    if (!otpExpiresAt) {
       setCountdown(0);
       return;
     }
 
-    const expiresAt = Math.floor(otpCreatedAt / 1000) + 5 * 60; // seconds
     const update = () => {
-      const now = Math.floor(Date.now() / 1000);
-      const remaining = Math.max(0, expiresAt - now);
+      const remaining = Math.max(
+        0,
+        Math.ceil((otpExpiresAt - Date.now()) / 1000),
+      );
       setCountdown(remaining);
     };
 
     update();
     const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
-  }, [otpCreatedAt]);
+  }, [otpExpiresAt]);
 
   const formatCountdown = () => {
     const minutes = Math.floor(countdown / 60);
@@ -102,62 +105,38 @@ const VerifyOtpScreen: React.FC = () => {
     }
   };
 
-  const handleVerifyCode = () => {
+  const handleVerifyCode = async () => {
     if (otp.length !== 6) {
       Alert.alert("Invalid OTP", "Invalid OTP code.");
       return;
     }
 
-    if (countdown <= 0) {
-      Alert.alert("Expired", "OTP has expired. Request a new code.");
-      // clear only OTP and timestamp (keep email for convenience)
-      useLoginStore.getState().saveResetOtp("");
-      useLoginStore.getState().saveOtpCreatedAt(null);
-      return;
+    if (isVerifying) return;
+    setIsVerifying(true);
+    try {
+      await verifyForgotPasswordOtp(otp);
+      navigation.navigate("ResetPassword");
+    } catch (err: unknown) {
+      const error = err instanceof Error ? err : new Error("Unable to verify code.");
+      Alert.alert("Unable to verify code", error.message);
+    } finally {
+      setIsVerifying(false);
     }
-
-    if (!storedOtp || otp !== storedOtp) {
-      Alert.alert("Invalid OTP", "Invalid OTP code.");
-      return;
-    }
-
-    // After OTP verification, send Firebase password reset email with deep link
-    // Use sendPasswordResetEmail so no Cloud Functions are required
-    const email = forgotEmail;
-    if (!email) {
-      Alert.alert("Error", "No email associated with reset flow.");
-      return;
-    }
-
-    // Import lazily to avoid cycle at module load
-    import("./services/reset-password.service").then(async (mod) => {
-      try {
-        await mod.sendPasswordResetLink(email, {
-          url: "barangay://reset-password",
-          handleCodeInApp: true,
-        } as any);
-        Alert.alert(
-          "Success",
-          "Password reset link has been sent to your email.",
-        );
-        navigation.navigate("Login");
-      } catch (err: unknown) {
-        const e = err as Error;
-        Alert.alert("Error", e.message ?? "Failed to send reset link.");
-      }
-    });
   };
 
   const handleResendCode = async () => {
-    if (countdown > 0) return;
-    if (isResending) return;
+    if (countdown > 0 || isResending) return;
     setIsResending(true);
     try {
       await resendForgotPasswordOtp();
-      Alert.alert("Success", "New OTP sent successfully.");
+      setOtp("");
+      Alert.alert(
+        "If your email is associated with an account",
+        "A new verification code has been sent.",
+      );
     } catch (err: unknown) {
-      const e = err as Error;
-      Alert.alert("Error", e.message ?? "Failed to resend OTP.");
+      const error = err instanceof Error ? err : new Error("Unable to resend code.");
+      Alert.alert("Unable to resend code", error.message);
     } finally {
       setIsResending(false);
     }
@@ -232,11 +211,12 @@ const VerifyOtpScreen: React.FC = () => {
 
         {/* Verify Button */}
         <AppButton
-          label="Verify Code"
+          label={isVerifying ? "Verifying..." : "Verify Code"}
           onPress={handleVerifyCode}
           variant="primary"
           fullWidth
           style={styles.verifyButton}
+          disabled={isVerifying}
         />
 
         {/* Info Box placed directly under Verify button */}

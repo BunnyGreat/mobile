@@ -1,6 +1,6 @@
 /**
  * Reset Password Screen
- * UI-only: new password + confirm password with live strength and requirements
+ * Submits the new password after server verification, keeping the existing form UI.
  */
 
 import React, { useMemo, useState } from "react";
@@ -16,9 +16,10 @@ import * as z from "zod";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
 import { useLoginStore } from "./store/login.store";
-import { auth } from "../../../../services/firebase/firebase";
-import { confirmPasswordReset } from "firebase/auth";
-import { useRoute } from "@react-navigation/native";
+import {
+  PasswordResetFunctionError,
+} from "./services/password-reset-api.service";
+import { resetPasswordWithAuthorization } from "./services/reset-password.service";
 
 const passwordSchema = z
   .object({
@@ -40,10 +41,7 @@ type FormValues = z.infer<typeof passwordSchema>;
 const ResetPasswordScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
   // success dialog state removed; using Alert for confirmation
-  const forgotEmail = useLoginStore((s) => s.forgotPasswordEmail);
-  const storedOtp = useLoginStore((s) => s.resetOtp);
-  const route: any = useRoute();
-  const oobCode: string | undefined = route?.params?.oobCode;
+  const resetAuthorization = useLoginStore((s) => s.resetAuthorization);
 
   const { control, handleSubmit, formState, watch } = useForm<FormValues>({
     resolver: zodResolver(passwordSchema),
@@ -106,43 +104,40 @@ const ResetPasswordScreen: React.FC = () => {
     [passwordValue],
   );
 
-  const passwordsMatch = false; // kept for UI parity; validation handled by form
-
   const onSubmit = async (values: FormValues) => {
     if (isLoading) return;
     setIsLoading(true);
 
-    if (!oobCode) {
-      Alert.alert("Error", "Invalid or missing reset link.");
+    if (!resetAuthorization) {
+      Alert.alert("Error", "Your reset verification has expired. Request a new code.");
+      useLoginStore.getState().clearResetFlow();
       setIsLoading(false);
       navigation.navigate("ForgotPassword");
       return;
     }
 
     try {
-      await confirmPasswordReset(auth, oobCode, values.password);
+      await resetPasswordWithAuthorization(
+        resetAuthorization,
+        values.password,
+      );
       useLoginStore.getState().clearResetFlow();
       Alert.alert("Success", "Password successfully updated.", [
         { text: "OK", onPress: () => navigation.navigate("Login") },
       ]);
     } catch (err: unknown) {
-      const e: any = err;
-      const code: string = e?.code ?? e?.message ?? "unknown";
-      if (code.includes("expired-action-code") || code.includes("expired")) {
-        Alert.alert("Error", "The reset link has expired. Request a new one.");
-        useLoginStore.getState().clearResetFlow();
-        navigation.navigate("ForgotPassword");
-      } else if (
-        code.includes("invalid-action-code") ||
-        code.includes("invalid")
+      if (
+        err instanceof PasswordResetFunctionError &&
+        (err.code === "RESET_AUTHORIZATION_INVALID" ||
+          err.code === "PASSWORD_UPDATE_FAILED")
       ) {
-        Alert.alert("Error", "Invalid reset link. Please request a new one.");
+        Alert.alert("Error", "Your reset verification has expired. Request a new code.");
         useLoginStore.getState().clearResetFlow();
         navigation.navigate("ForgotPassword");
-      } else if (code.includes("weak-password") || code.includes("weak")) {
-        Alert.alert("Error", "Password is too weak.");
       } else {
-        Alert.alert("Error", "Unable to update password.");
+        const message =
+          err instanceof Error ? err.message : "Unable to update password.";
+        Alert.alert("Error", message);
       }
     } finally {
       setIsLoading(false);

@@ -45,7 +45,6 @@ export const checkEmailAvailability = async (
 export const sendRegistrationOtpEmail = async (
   email: string,
   otpCode: string,
-  type: "registration" | "password-reset" = "registration",
 ): Promise<void> => {
   if (!email || !otpCode) {
     throw new Error("Invalid OTP email payload.");
@@ -63,7 +62,7 @@ export const sendRegistrationOtpEmail = async (
       body: {
         email,
         otpCode,
-        type,
+        type: "registration",
       },
     });
 

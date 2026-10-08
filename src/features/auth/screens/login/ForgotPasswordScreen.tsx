@@ -1,7 +1,7 @@
 /**
  * Forgot Password Screen
  * Allows users to enter their email address to request a password reset via OTP.
- * UI only - no backend logic.
+ * Starts the server-verified password reset flow.
  */
 
 import React from "react";
@@ -46,10 +46,6 @@ const ForgotPasswordScreen: React.FC = () => {
       navigation.navigate("VerifyOtp");
     } catch (err: unknown) {
       const e = err as Error;
-      if (e.message === "NOT_REGISTERED") {
-        Alert.alert("Error", "This email is not registered.");
-        return;
-      }
       Alert.alert("Error", e.message ?? "Failed to send verification code.");
     }
   };
@@ -77,8 +73,8 @@ const ForgotPasswordScreen: React.FC = () => {
 
         <Text style={styles.title}>Forgot Password?</Text>
         <Text style={styles.subtitle}>
-          Enter your registered email address and we'll send you a verification
-          code to reset your password.
+          Enter your email address. If it is associated with an account, we'll
+          send you a verification code to reset your password.
         </Text>
 
         <Controller

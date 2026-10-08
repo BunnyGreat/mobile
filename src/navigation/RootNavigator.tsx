@@ -6,7 +6,6 @@ import LoginScreen from "../features/auth/screens/login/LoginScreen";
 import ForgotPasswordScreen from "../features/auth/screens/login/ForgotPasswordScreen";
 import VerifyOtpScreen from "../features/auth/screens/login/VerifyOtpScreen";
 import ResetPasswordScreen from "../features/auth/screens/login/ResetPasswordScreen";
-import { subscribeToLinking } from "./deepLinking";
 import RegisterScreen from "../features/auth/screens/register/RegisterScreen";
 import RegisterOtpScreen from "../features/auth/screens/register/RegisterOtpScreen";
 import ResidenceInformationScreen from "../features/auth/screens/register/ResidenceInformationScreen";
@@ -29,10 +28,6 @@ import { RootStackParamList } from "./types";
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export const RootNavigator: React.FC = () => {
-  React.useEffect(() => {
-    const unsub = subscribeToLinking(null as any);
-    return () => unsub && unsub();
-  }, []);
   return (
     <Stack.Navigator
       screenOptions={{

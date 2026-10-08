@@ -1,18 +1,23 @@
-import { auth } from "../../../../../services/firebase/firebase";
-import { sendPasswordResetEmail } from "firebase/auth";
+import { invokePasswordResetFunction } from "./password-reset-api.service";
 
-export const sendPasswordResetLink = async (
-  email: string,
-  actionCodeSettings?: { url: string; handleCodeInApp: boolean },
+type ResetPasswordResponse = {
+  success: boolean;
+};
+
+export const resetPasswordWithAuthorization = async (
+  resetAuthorization: string,
+  password: string,
 ): Promise<void> => {
-  if (!email) throw new Error("Invalid email");
-  try {
-    if (actionCodeSettings) {
-      await sendPasswordResetEmail(auth, email, actionCodeSettings as any);
-    } else {
-      await sendPasswordResetEmail(auth, email);
-    }
-  } catch (error: unknown) {
-    throw error instanceof Error ? error : new Error("Password reset failed");
+  if (!resetAuthorization || !password) {
+    throw new Error("Invalid password reset request.");
   }
+
+  const response =
+    await invokePasswordResetFunction<ResetPasswordResponse>({
+      action: "reset",
+      resetAuthorization,
+      password,
+    });
+
+  if (!response.success) throw new Error("Password could not be updated.");
 };
