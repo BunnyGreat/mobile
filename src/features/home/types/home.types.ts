@@ -15,18 +15,8 @@ export interface QuickAction {
   route: QuickActionRoute;
 }
 
-export interface WeatherSummary {
-  temperature: number;
-  condition: string;
-  icon: string;
-  city: string;
-  humidity?: number;
-  windSpeed?: number;
-}
-
 export interface DashboardData {
   greeting: string;
-  weather?: WeatherSummary | null;
   quickActions: QuickAction[];
 }
 

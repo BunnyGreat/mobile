@@ -2,9 +2,6 @@ import React, { useEffect, useRef } from "react";
 import { Animated, ScrollView, StyleSheet, View } from "react-native";
 import {
   COLORS,
-  FONT_FAMILY,
-  FONT_SIZE,
-  SHADOWS,
   SPACING,
 } from "../../../theme";
 
@@ -97,18 +94,6 @@ const DashboardSkeleton: React.FC<DashboardSkeletonProps> = ({
         style={styles.carouselBlock}
       />
 
-      <View style={styles.weatherCard}>
-        <SkeletonBlock height={24} width={140} />
-        <View style={styles.weatherRow}>
-          <SkeletonBlock width={80} height={80} radius={40} />
-          <View style={styles.weatherDetails}>
-            <SkeletonBlock height={18} width={120} />
-            <SkeletonBlock height={14} width={90} style={styles.weatherLine} />
-            <SkeletonBlock height={14} width={110} style={styles.weatherLine} />
-          </View>
-        </View>
-      </View>
-
       <View style={styles.quickActionsSection}>
         <SkeletonBlock height={20} width={120} />
         <ScrollView
@@ -164,25 +149,6 @@ const styles = StyleSheet.create({
   },
   carouselBlock: {
     marginBottom: SPACING.lg,
-  },
-  weatherCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    padding: SPACING.lg,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.small,
-  },
-  weatherRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: SPACING.md,
-  },
-  weatherDetails: {
-    flex: 1,
-    marginLeft: SPACING.md,
-  },
-  weatherLine: {
-    marginTop: SPACING.sm,
   },
   quickActionsSection: {
     marginTop: SPACING.sm,

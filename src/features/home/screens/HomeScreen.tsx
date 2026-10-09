@@ -4,7 +4,6 @@ import { ScrollView, StyleSheet } from "react-native";
 import { COLORS, SPACING } from "../../../theme";
 import HeroHeader from "../components/HeroHeader";
 import HeroCarousel from "../components/HeroCarousel";
-import WeatherCard from "../components/WeatherCard";
 import QuickActionsGrid from "../components/QuickActionsGrid";
 import DashboardSkeleton from "../components/DashboardSkeleton";
 import { useDashboard } from "../hooks/useDashboard";
@@ -25,7 +24,6 @@ const HomeScreen: React.FC = () => {
         <HeroHeader />
         <HeroCarousel />
         <QuickActionsGrid />
-        <WeatherCard />
       </ScrollView>
     </SafeAreaView>
   );

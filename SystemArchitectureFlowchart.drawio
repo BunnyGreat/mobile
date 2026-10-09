@@ -193,9 +193,6 @@
                 <mxCell id="comp-hero-carousel" value="HeroCarousel" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#6A1B9A;fontSize=10;align=center;" parent="home-components" vertex="1">
                     <mxGeometry x="100" y="40" width="90" height="25" as="geometry"/>
                 </mxCell>
-                <mxCell id="comp-weather-card" value="WeatherCard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#6A1B9A;fontSize=10;align=center;" parent="home-components" vertex="1">
-                    <mxGeometry x="10" y="75" width="80" height="25" as="geometry"/>
-                </mxCell>
                 <mxCell id="comp-quick-actions" value="QuickActionsGrid" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E1BEE7;strokeColor=#6A1B9A;fontSize=10;align=center;" parent="home-components" vertex="1">
                     <mxGeometry x="100" y="75" width="90" height="25" as="geometry"/>
                 </mxCell>
@@ -406,7 +403,7 @@
                 <mxCell id="service-profile" value="PROFILE SERVICE&#xa;getProfile&#xa;updateProfile&#xa;updateProfilePhoto&#xa;Firestore" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=2;fontSize=11;align=center;verticalAlign=top;" parent="1" vertex="1">
                     <mxGeometry x="220" y="1240" width="160" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="service-dashboard" value="DASHBOARD SERVICE&#xa;getDashboard&#xa;fetchWeatherSummary&#xa;Open-Meteo API" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=2;fontSize=11;align=center;verticalAlign=top;" parent="1" vertex="1">
+                <mxCell id="service-dashboard" value="DASHBOARD SERVICE&#xa;getDashboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=2;fontSize=11;align=center;verticalAlign=top;" parent="1" vertex="1">
                     <mxGeometry x="400" y="1240" width="160" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="service-status" value="STATUS SERVICE&#xa;fetchRequests&#xa;subscribeToRequests&#xa;Firestore (Real-time)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#BBDEFB;strokeColor=#1565C0;strokeWidth=2;fontSize=11;align=center;verticalAlign=top;" parent="1" vertex="1">
@@ -499,7 +496,7 @@
                 <mxCell id="firebase-storage" value="CLOUD STORAGE&#xa;&#xa;• Profile Photos&#xa;• ID Documents&#xa;• Appointment Docs&#xa;&#xa;Firebase Storage Buckets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#5E35B1;strokeWidth=2;fontSize=10;align=center;verticalAlign=top;" parent="backend-container" vertex="1">
                     <mxGeometry x="330" y="40" width="130" height="100" as="geometry"/>
                 </mxCell>
-                <mxCell id="external-apis" value="EXTERNAL APIs&#xa;&#xa;• Open-Meteo Weather API&#xa;• Supabase (reserved)&#xa;&#xa;Third-party Integrations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#5E35B1;strokeWidth=2;fontSize=10;align=center;verticalAlign=top;" parent="backend-container" vertex="1">
+                <mxCell id="external-apis" value="EXTERNAL APIs&#xa;&#xa;• Supabase (reserved)&#xa;&#xa;Third-party Integrations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#5E35B1;strokeWidth=2;fontSize=10;align=center;verticalAlign=top;" parent="backend-container" vertex="1">
                     <mxGeometry x="480" y="40" width="130" height="80" as="geometry"/>
                 </mxCell>
                 <mxCell id="async-storage" value="LOCAL STORAGE&#xa;&#xa;• AsyncStorage&#xa;• Cache Persistence&#xa;• Offline Support&#xa;&#xa;Client-side Storage" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D1C4E9;strokeColor=#5E35B1;strokeWidth=2;fontSize=10;align=center;verticalAlign=top;" parent="backend-container" vertex="1">

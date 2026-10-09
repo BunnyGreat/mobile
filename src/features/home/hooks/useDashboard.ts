@@ -21,7 +21,6 @@ export const useDashboard = () => {
     () => ({
       dashboard,
       greeting: dashboard?.greeting,
-      weather: dashboard?.weather,
       quickActions: dashboard?.quickActions ?? [],
       loading,
       refreshing,
