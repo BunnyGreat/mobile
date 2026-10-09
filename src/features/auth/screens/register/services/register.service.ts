@@ -23,6 +23,7 @@ import type {
   RegistrationPersonalInformation,
   RegistrationResidenceInformation,
   RegistrationDocuments,
+  RegistrationAuthMethod,
 } from "../types/register.types";
 
 export const checkEmailExists = async (email: string): Promise<boolean> => {
@@ -94,6 +95,16 @@ export const sendRegistrationOtpEmail = async (
         : "Failed to send verification email. Please try again.";
     throw new Error(message);
   }
+};
+
+export const createRegistrationOtp = async (
+  email: string,
+): Promise<{ code: string; createdAt: number; expiresAt: number }> => {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const createdAt = Date.now();
+  const expiresAt = createdAt + 5 * 60 * 1000;
+  await sendRegistrationOtpEmail(email, code);
+  return { code, createdAt, expiresAt };
 };
 
 export const generateReferenceId = (): string => {
@@ -193,7 +204,9 @@ const logRegistrationFailure = (
 export const registerUser = async (
   formData: RegistrationFormData,
   email: string,
-  password: string,
+  password: string | null,
+  authMethod: RegistrationAuthMethod = "password",
+  expectedFirebaseUid: string | null = null,
 ): Promise<
   | { success: true; uid: string; referenceId: string }
   | { success: false; error: string }
@@ -209,23 +222,53 @@ export const registerUser = async (
       throw new Error("Profile photo is required.");
     }
 
-    credential = await createUserWithEmailAndPassword(auth, email, password);
+    let uid: string;
+    if (authMethod === "password") {
+      if (!password) {
+        throw new Error("A password is required for Email/Password registration.");
+      }
 
-    if (!credential.user?.uid) {
-      throw new Error("Firebase Auth did not return a user ID.");
-    }
+      credential = await createUserWithEmailAndPassword(auth, email, password);
+      if (!credential.user?.uid) {
+        throw new Error("Firebase Auth did not return a user ID.");
+      }
+      uid = credential.user.uid;
 
-    const uid = credential.user.uid;
+      const { supabaseCreateOrSignIn } = await import(
+        "../../../../../services/supabase/auth.service"
+      );
 
-    const { supabaseCreateOrSignIn } = await import(
-      "../../../../../services/supabase/auth.service"
-    );
+      const supabaseAuthResult = await supabaseCreateOrSignIn(email, password);
+      if (supabaseAuthResult?.error) {
+        throw supabaseAuthResult.error instanceof Error
+          ? supabaseAuthResult.error
+          : new Error(String(supabaseAuthResult.error));
+      }
+    } else {
+      const googleUser = auth.currentUser;
+      if (
+        !googleUser ||
+        !expectedFirebaseUid ||
+        googleUser.uid !== expectedFirebaseUid ||
+        googleUser.email?.toLowerCase() !== email.toLowerCase() ||
+        !googleUser.emailVerified ||
+        !googleUser.providerData.some(
+          (provider) => provider.providerId === "google.com",
+        )
+      ) {
+        throw new Error(
+          "The verified Google account is no longer available. Please restart Google registration.",
+        );
+      }
 
-    const supabaseAuthResult = await supabaseCreateOrSignIn(email, password);
-    if (supabaseAuthResult?.error) {
-      throw supabaseAuthResult.error instanceof Error
-        ? supabaseAuthResult.error
-        : new Error(String(supabaseAuthResult.error));
+      const { data: sessionData, error: sessionError } =
+        await supabase.auth.getSession();
+      if (sessionError || !sessionData.session) {
+        throw new Error(
+          "The Google storage session expired. Please restart Google registration.",
+        );
+      }
+      uid = googleUser.uid;
     }
 
     const profilePhotoUpload = await uploadImage(

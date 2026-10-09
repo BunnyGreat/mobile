@@ -29,6 +29,27 @@ export const supabaseSignIn = async (email: string, password: string): Promise<S
   }
 };
 
+export const supabaseSignInWithGoogleIdToken = async (
+  token: string,
+): Promise<SupabaseAuthResult> => {
+  try {
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: "google",
+      token,
+    });
+    if (error) return { error, data };
+    if (!data.session) {
+      return {
+        error: new Error("Supabase did not establish a Google session."),
+        data,
+      };
+    }
+    return { data };
+  } catch (err) {
+    return { error: err };
+  }
+};
+
 export const supabaseSignOut = async (): Promise<SupabaseAuthResult<{ success: true }>> => {
   try {
     const { error } = await supabase.auth.signOut();

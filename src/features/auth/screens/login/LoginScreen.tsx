@@ -13,11 +13,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppInput from "../../../../components/ui/AppInput";
 import AppButton from "../../../../components/ui/AppButton";
+import GoogleSignInButton from "../../components/GoogleSignInButton";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
 import { loginSchema, type LoginFormValues } from "./schema/login.schema";
 import { loginUser } from "./services/login.service";
 import { useLoginStore } from "./store/login.store";
+import {
+  authenticateGoogleResident,
+  getGoogleAuthenticationErrorMessage,
+  isGoogleSignInCancelled,
+} from "../../services/google-auth.service";
+import { createRegistrationOtp } from "../register/services/register.service";
+import { useRegisterStore } from "../register/store/register.store";
 
 const LoginScreen: React.FC = () => {
   const navigation = useNavigation<RootStackNavigationProp>();
@@ -25,6 +33,8 @@ const LoginScreen: React.FC = () => {
   const setUser = useLoginStore((s) => s.setUser);
   const isLoading = useLoginStore((s) => s.isLoading);
   const setLoading = useLoginStore((s) => s.setLoading);
+  const saveGoogleAccount = useRegisterStore((s) => s.saveGoogleAccount);
+  const setOtp = useRegisterStore((s) => s.setOtp);
 
   const { control, handleSubmit, formState } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -60,6 +70,64 @@ const LoginScreen: React.FC = () => {
     } catch (error: unknown) {
       const message = (error as Error)?.message ?? "Login failed.";
       Alert.alert("Login Failed", message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onGoogleSignIn = async () => {
+    if (isLoading) return;
+    setLoading(true);
+
+    try {
+      const result = await authenticateGoogleResident();
+      if (result.type === "new-registration") {
+        let otp: Awaited<ReturnType<typeof createRegistrationOtp>>;
+        try {
+          otp = await createRegistrationOtp(result.email);
+        } catch {
+          Alert.alert(
+            "Registration Code Failed",
+            "Unable to send a registration code to your verified Google email. Please try again.",
+          );
+          return;
+        }
+        saveGoogleAccount(result.email, result.firebaseUid);
+        setOtp(otp.code, otp.createdAt, otp.expiresAt);
+        navigation.navigate("RegisterOtp");
+        return;
+      }
+
+      if (result.user.status === "pending") {
+        Alert.alert(
+          "Account Pending",
+          "Your registration is still under review.",
+        );
+        return;
+      }
+      if (result.user.status === "rejected") {
+        Alert.alert(
+          "Registration Rejected",
+          "Your registration has been rejected.",
+        );
+        return;
+      }
+      if (result.user.status !== "approved") {
+        Alert.alert("Sign-In Failed", "Your account is not approved.");
+        return;
+      }
+
+      setUser(result.user);
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "MainTabs" }],
+      });
+    } catch (error: unknown) {
+      if (isGoogleSignInCancelled(error)) return;
+      Alert.alert(
+        "Google Sign-In Failed",
+        getGoogleAuthenticationErrorMessage(error),
+      );
     } finally {
       setLoading(false);
     }
@@ -164,6 +232,18 @@ const LoginScreen: React.FC = () => {
           style={styles.loginButton}
           disabled={isLoading}
         />
+
+        <View style={styles.googleDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <GoogleSignInButton
+          onPress={onGoogleSignIn}
+          loading={isLoading}
+          disabled={isLoading}
+        />
       </View>
 
       <View style={styles.registerContainer}>
@@ -232,6 +312,22 @@ const styles = StyleSheet.create({
   },
   loginButton: {
     marginTop: SPACING.lg,
+  },
+  googleDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+    marginVertical: SPACING.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    color: COLORS.paragraph,
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body12,
   },
   registerContainer: {
     flexDirection: "row",

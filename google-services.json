@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "384183671098",
+    "project_id": "barangay-management-syst-822de",
+    "storage_bucket": "barangay-management-syst-822de.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:384183671098:android:6b4d67efce8ca720fb5803",
+        "android_client_info": {
+          "package_name": "com.sanisidro.ebrgy"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "384183671098-4jls9idb3qit6ateoerselbaqrm3ep5s.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sanisidro.ebrgy",
+            "certificate_hash": "643be11d928a6a82e0d7cef414dce8a3764261b5"
+          }
+        },
+        {
+          "client_id": "384183671098-8hlskg5oq415h8n1b25va28dov1t8391.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3QP266gm7cE_yN6izMTicclX7o8zJ2-c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "384183671098-8hlskg5oq415h8n1b25va28dov1t8391.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

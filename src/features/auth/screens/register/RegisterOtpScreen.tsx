@@ -7,7 +7,7 @@ import FormOtpInput from "../../../../components/forms/FormOtpInput";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
 import { RegistrationStore, useRegisterStore } from "./store/register.store";
-import { sendRegistrationOtpEmail } from "./services/register.service";
+import { createRegistrationOtp } from "./services/register.service";
 
 const RegisterOtpScreen: React.FC = () => {
   const [otp, setOtpValue] = useState("");
@@ -62,14 +62,10 @@ const RegisterOtpScreen: React.FC = () => {
   const handleResendCode = async () => {
     if (resendCooldown > 0 || !email) return;
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const createdAt = Date.now();
-    const expiresAt = createdAt + 5 * 60 * 1000;
-
     setIsSending(true);
     try {
-      await sendRegistrationOtpEmail(email, otp);
-      setOtp(otp, createdAt, expiresAt);
+      const nextOtp = await createRegistrationOtp(email);
+      setOtp(nextOtp.code, nextOtp.createdAt, nextOtp.expiresAt);
       setOtpValue("");
       setCountdown(5 * 60);
       setResendCooldown(60);

@@ -1,16 +1,30 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import {
+  Alert,
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppInput from "../../../../components/ui/AppInput";
 import AppButton from "../../../../components/ui/AppButton";
+import GoogleSignInButton from "../../components/GoogleSignInButton";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
 import { RegistrationStore, useRegisterStore } from "./store/register.store";
 import {
   checkEmailAvailability,
-  sendRegistrationOtpEmail,
+  createRegistrationOtp,
 } from "./services/register.service";
+import {
+  authenticateGoogleResident,
+  getGoogleAuthenticationErrorMessage,
+  isGoogleSignInCancelled,
+} from "../../services/google-auth.service";
+import { useLoginStore } from "../login/store/login.store";
 
 const RegisterScreen: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -21,6 +35,7 @@ const RegisterScreen: React.FC = () => {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [emailExists, setEmailExists] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [emailCheckedValue, setEmailCheckedValue] = useState("");
   const emailCheckPromiseRef = useRef<Promise<boolean> | null>(null);
   const emailCheckTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,6 +45,10 @@ const RegisterScreen: React.FC = () => {
     (state: RegistrationStore) => state.saveAccountCredentials,
   );
   const setOtp = useRegisterStore((state: RegistrationStore) => state.setOtp);
+  const saveGoogleAccount = useRegisterStore(
+    (state: RegistrationStore) => state.saveGoogleAccount,
+  );
+  const setUser = useLoginStore((state) => state.setUser);
 
   const getPasswordStrength = (pwd: string) => {
     let score = 0;
@@ -200,13 +219,8 @@ const RegisterScreen: React.FC = () => {
     try {
       saveAccountCredentials(email, password);
 
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const createdAt = Date.now();
-      const expiresAt = createdAt + 5 * 60 * 1000;
-
-      // OTP generated and sent
-      await sendRegistrationOtpEmail(email, otp);
-      setOtp(otp, createdAt, expiresAt);
+      const otp = await createRegistrationOtp(email);
+      setOtp(otp.code, otp.createdAt, otp.expiresAt);
 
       navigation.navigate("RegisterOtp");
     } catch (error: unknown) {
@@ -218,6 +232,60 @@ const RegisterScreen: React.FC = () => {
     } finally {
       isContinuePressedRef.current = false;
       setIsSendingOtp(false);
+    }
+  };
+
+  const handleGoogleContinue = async () => {
+    if (isGoogleLoading || isSendingOtp || isCheckingEmail) return;
+    setIsGoogleLoading(true);
+
+    try {
+      const result = await authenticateGoogleResident();
+      if (result.type === "resident") {
+        if (result.user.status === "approved") {
+          setUser(result.user);
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "MainTabs" }],
+          });
+        } else if (result.user.status === "pending") {
+          Alert.alert(
+            "Account Pending",
+            "Your registration is still under review.",
+          );
+        } else if (result.user.status === "rejected") {
+          Alert.alert(
+            "Registration Rejected",
+            "Your registration has been rejected.",
+          );
+        } else {
+          Alert.alert("Sign-In Failed", "Your account is not approved.");
+        }
+        return;
+      }
+
+      let otp: Awaited<ReturnType<typeof createRegistrationOtp>>;
+      try {
+        otp = await createRegistrationOtp(result.email);
+      } catch {
+        Alert.alert(
+          "Registration Code Failed",
+          "Unable to send a registration code to your verified Google email. Please try again.",
+        );
+        return;
+      }
+
+      saveGoogleAccount(result.email, result.firebaseUid);
+      setOtp(otp.code, otp.createdAt, otp.expiresAt);
+      navigation.navigate("RegisterOtp");
+    } catch (error: unknown) {
+      if (isGoogleSignInCancelled(error)) return;
+      Alert.alert(
+        "Google Sign-In Failed",
+        getGoogleAuthenticationErrorMessage(error),
+      );
+    } finally {
+      setIsGoogleLoading(false);
     }
   };
 
@@ -438,6 +506,18 @@ const RegisterScreen: React.FC = () => {
           disabled={isSendingOtp || isCheckingEmail || emailExists}
           loading={isCheckingEmail || isSendingOtp}
         />
+
+        <View style={styles.googleDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <GoogleSignInButton
+          onPress={handleGoogleContinue}
+          loading={isGoogleLoading}
+          disabled={isGoogleLoading || isSendingOtp || isCheckingEmail}
+        />
       </View>
 
       <View style={styles.bottomRow}>
@@ -465,6 +545,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     flex: 1,
     paddingTop: SPACING.lg,
+  },
+  googleDivider: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+    marginVertical: SPACING.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: COLORS.border,
+  },
+  dividerText: {
+    color: COLORS.paragraph,
+    fontFamily: FONT_FAMILY.semibold,
+    fontSize: FONT_SIZE.body12,
   },
   progressSection: {
     width: "100%",

@@ -26,10 +26,20 @@ const UploadIdentificationScreen: React.FC = () => {
 
     isSubmittingRef.current = true;
 
-    const { email, password, personalInformation, residenceInformation } =
-      getRegistrationData();
+    const {
+      email,
+      password,
+      authMethod,
+      personalInformation,
+      residenceInformation,
+    } = getRegistrationData();
 
-    if (!email || !password || !personalInformation || !residenceInformation) {
+    if (
+      !email ||
+      (authMethod === "password" && !password) ||
+      !personalInformation ||
+      !residenceInformation
+    ) {
       Alert.alert(
         "Registration Error",
         "Incomplete registration data. Please complete all registration steps.",

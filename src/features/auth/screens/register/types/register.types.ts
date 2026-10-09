@@ -1,4 +1,5 @@
 export type RegistrationStatus = "pending" | "approved" | "rejected";
+export type RegistrationAuthMethod = "password" | "google";
 
 export interface RegistrationPersonalInformation {
   firstName: string;

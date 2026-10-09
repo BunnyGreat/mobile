@@ -5,11 +5,14 @@ import type {
   RegistrationResidenceInformation,
   RegistrationDocuments,
   RegistrationFormData,
+  RegistrationAuthMethod,
 } from "../types/register.types";
 
 export interface RegistrationStore {
   email: string;
   password: string;
+  firebaseUid: string | null;
+  authMethod: RegistrationAuthMethod;
   otpCode: string | null;
   otpCreatedAt: number | null;
   otpExpiresAt: number | null;
@@ -19,6 +22,7 @@ export interface RegistrationStore {
   isLoading: boolean;
   referenceId: string | null;
   saveAccountCredentials: (email: string, password: string) => void;
+  saveGoogleAccount: (email: string, firebaseUid: string) => void;
   savePersonalInformation: (data: RegistrationPersonalInformation) => void;
   saveResidenceInformation: (data: RegistrationResidenceInformation) => void;
   saveDocuments: (data: RegistrationDocuments) => void;
@@ -33,6 +37,8 @@ export interface RegistrationStore {
   getRegistrationData: () => {
     email: string;
     password: string;
+    firebaseUid: string | null;
+    authMethod: RegistrationAuthMethod;
     personalInformation: RegistrationPersonalInformation | null;
     residenceInformation: RegistrationResidenceInformation | null;
     documents: RegistrationDocuments | null;
@@ -44,6 +50,8 @@ export interface RegistrationStore {
 export const useRegisterStore = create<RegistrationStore>((set, get) => ({
   email: "",
   password: "",
+  firebaseUid: null,
+  authMethod: "password",
   otpCode: null,
   otpCreatedAt: null,
   otpExpiresAt: null,
@@ -54,7 +62,34 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
   referenceId: null,
 
   saveAccountCredentials: (email, password) =>
-    set(() => ({ email, password })),
+    set(() => ({
+      email,
+      password,
+      firebaseUid: null,
+      authMethod: "password",
+      otpCode: null,
+      otpCreatedAt: null,
+      otpExpiresAt: null,
+      personalInformation: null,
+      residenceInformation: null,
+      documents: null,
+      referenceId: null,
+    })),
+
+  saveGoogleAccount: (email, firebaseUid) =>
+    set(() => ({
+      email,
+      password: "",
+      firebaseUid,
+      authMethod: "google",
+      otpCode: null,
+      otpCreatedAt: null,
+      otpExpiresAt: null,
+      personalInformation: null,
+      residenceInformation: null,
+      documents: null,
+      referenceId: null,
+    })),
 
   savePersonalInformation: (data) =>
     set(() => ({ personalInformation: data })),
@@ -111,10 +146,20 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
   },
 
   getRegistrationData: () => {
-    const { email, password, personalInformation, residenceInformation, documents } = get();
+    const {
+      email,
+      password,
+      firebaseUid,
+      authMethod,
+      personalInformation,
+      residenceInformation,
+      documents,
+    } = get();
     return {
       email,
       password,
+      firebaseUid,
+      authMethod,
       personalInformation,
       residenceInformation,
       documents,
@@ -132,13 +177,16 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
       const {
         email,
         password,
+        firebaseUid,
+        authMethod,
         personalInformation,
         residenceInformation,
       } = get();
 
       if (
         !email ||
-        !password ||
+        (authMethod === "password" && !password) ||
+        (authMethod === "google" && !firebaseUid) ||
         !personalInformation ||
         !residenceInformation
       ) {
@@ -151,7 +199,13 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
         documents,
       };
 
-      const result = await registerUser(formData, email, password);
+      const result = await registerUser(
+        formData,
+        email,
+        password || null,
+        authMethod,
+        firebaseUid,
+      );
 
       if (!result.success) {
         return { success: false, error: result.error };
@@ -173,6 +227,8 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
     set(() => ({
       email: "",
       password: "",
+      firebaseUid: null,
+      authMethod: "password",
       otpCode: null,
       otpCreatedAt: null,
       otpExpiresAt: null,
