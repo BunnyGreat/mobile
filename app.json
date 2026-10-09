@@ -10,7 +10,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.sanisidro.ebrgy",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Allow camera access to complete a brief profile-photo movement check and capture your profile photo."
       }
     },
     "android": {
@@ -20,6 +21,9 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.sanisidro.ebrgy",
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -30,7 +34,19 @@
       "expo-font",
       "expo-status-bar",
       "@react-native-google-signin/google-signin",
-      "./plugins/with-google-play-services-visibility"
+      "./plugins/with-google-play-services-visibility",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26,
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "kotlinVersion": "2.2.21"
+          }
+        }
+      ],
+      "./plugins/with-vision-camera-android-toolchain"
     ],
     "scheme": "barangay",
     "extra": {

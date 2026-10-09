@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,15 @@ import {
   Image,
   Modal,
   FlatList,
-  Alert,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import { File } from "expo-file-system";
 import { Calendar } from "react-native-calendars";
 import { format } from "date-fns";
 import AppInput from "../../../../../components/ui/AppInput";
 import AppButton from "../../../../../components/ui/AppButton";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../../theme";
+import ProfilePhotoLivenessModal from "./ProfilePhotoLivenessModal";
 
 import type { RegistrationPersonalInformation } from "../types/register.types";
 
@@ -24,6 +24,8 @@ type Props = {
   onNext?: (data: RegistrationPersonalInformation) => void;
   onBack?: () => void;
 };
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
   // Form field states
@@ -38,6 +40,9 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
   const [statusOpen, setStatusOpen] = useState(false);
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoError, setPhotoError] = useState("");
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [photoProcessing, setPhotoProcessing] = useState(false);
+  const closePhotoCamera = useCallback(() => setCameraOpen(false), []);
 
   // Format contact number
   const formatContactNumber = (digits: string) => {
@@ -78,8 +83,6 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
   const [genderError, setGenderError] = useState("");
   const [civilStatusError, setCivilStatusError] = useState("");
 
-  const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-
   const handleContactNumberChange = (value: string) => {
     const digits = value.replace(/\D/g, "");
     if (!digits) {
@@ -98,19 +101,7 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
     if (contactNumberError) setContactNumberError("");
   };
 
-  const requestPhotoPermission = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission required",
-        "Media library access is required to upload a profile photo.",
-      );
-      return false;
-    }
-    return true;
-  };
-
-  const compressPhoto = async (uri: string) => {
+  const compressPhoto = useCallback(async (uri: string) => {
     const result = await ImageManipulator.manipulateAsync(
       uri,
       [{ resize: { width: 1200, height: 1200 } }],
@@ -131,42 +122,31 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
     }
 
     return result.uri;
-  };
+  }, []);
 
-  const handleUploadPhoto = async () => {
-    const hasPermission = await requestPhotoPermission();
-    if (!hasPermission) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: false,
-      quality: 1,
-    });
-
-    if (result.canceled) return;
-
-    const asset = result.assets?.[0];
-    if (!asset?.uri) return;
-
-    const extension = asset.uri.split(".").pop()?.toLowerCase();
-    if (!extension || !["jpg", "jpeg", "png"].includes(extension)) {
-      const message = "Profile photo must be a JPG or PNG image.";
-      setPhotoError(message);
-      Alert.alert(message);
-      return;
-    }
-
-    try {
-      const compressedUri = await compressPhoto(asset.uri);
-      setPhotoUri(compressedUri);
-      setPhotoError("");
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to process photo.";
-      setPhotoError(message);
-      Alert.alert(message);
-    }
-  };
+  const handleVerifiedPhoto = useCallback(
+    async (uri: string) => {
+      setPhotoProcessing(true);
+      try {
+        const compressedUri = await compressPhoto(uri);
+        setPhotoUri(compressedUri);
+        setPhotoError("");
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "Failed to process photo.";
+        setPhotoError(message);
+        throw new Error(message);
+      } finally {
+        try {
+          new File(uri).delete();
+        } catch (error: unknown) {
+          console.warn("Failed to remove temporary profile capture.", error);
+        }
+        setPhotoProcessing(false);
+      }
+    },
+    [compressPhoto],
+  );
 
   const handleNext = () => {
     const firstNameValidation = !firstName.trim()
@@ -311,7 +291,8 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
           <TouchableOpacity
             style={styles.cameraButton}
             activeOpacity={0.8}
-            onPress={handleUploadPhoto}
+            onPress={() => setCameraOpen(true)}
+            disabled={photoProcessing}
           >
             <Image
               source={require("../../../../../../assets/icons/camera.png")}
@@ -324,9 +305,16 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
           <TouchableOpacity
             style={[styles.photoActionButton, styles.photoActionPrimary]}
             activeOpacity={0.8}
-            onPress={handleUploadPhoto}
+            onPress={() => setCameraOpen(true)}
+            disabled={photoProcessing}
           >
-            <Text style={styles.photoActionPrimaryText}>Upload Photo</Text>
+            <Text style={styles.photoActionPrimaryText}>
+              {photoProcessing
+                ? "Preparing Photo..."
+                : photoUri
+                  ? "Retake & Verify Photo"
+                  : "Capture & Verify Photo"}
+            </Text>
           </TouchableOpacity>
         </View>
         {photoError ? <Text style={styles.errorText}>{photoError}</Text> : null}
@@ -606,6 +594,11 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
           services.
         </Text>
       </View>
+      <ProfilePhotoLivenessModal
+        visible={cameraOpen}
+        onClose={closePhotoCamera}
+        onPhotoCaptured={handleVerifiedPhoto}
+      />
     </View>
   );
 };
