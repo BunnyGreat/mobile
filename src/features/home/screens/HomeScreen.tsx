@@ -1,6 +1,6 @@
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ScrollView, StyleSheet } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { COLORS, SPACING } from "../../../theme";
 import HeroHeader from "../components/HeroHeader";
 import HeroCarousel from "../components/HeroCarousel";
@@ -17,6 +17,21 @@ const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+      <View
+        pointerEvents="none"
+        style={styles.dotPattern}
+        accessible={false}
+      >
+        {Array.from({ length: 20 }, (_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              { opacity: 0.1 + (index % 5) * 0.025 },
+            ]}
+          />
+        ))}
+      </View>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
@@ -36,6 +51,24 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingBottom: SPACING.lg,
+  },
+  dotPattern: {
+    position: "absolute",
+    right: SPACING.sm,
+    bottom: SPACING.xl,
+    width: 64,
+    height: 48,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    alignContent: "flex-start",
+  },
+  dot: {
+    width: 3,
+    height: 3,
+    borderRadius: 2,
+    margin: 4,
+    backgroundColor: COLORS.primary,
   },
 });
 

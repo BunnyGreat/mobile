@@ -15,7 +15,15 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({ actions }) => {
 
   return (
     <View style={styles.section}>
-      <Text style={styles.title}>Quick Actions</Text>
+      <View style={styles.heading}>
+        <View style={styles.headingAccent} />
+        <View>
+          <Text style={styles.title}>Services at your fingertips</Text>
+          <Text style={styles.subtitle}>
+            Common barangay services, all in one place
+          </Text>
+        </View>
+      </View>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -32,19 +40,37 @@ const QuickActionsGrid: React.FC<QuickActionsGridProps> = ({ actions }) => {
 const styles = StyleSheet.create({
   section: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xl,
+    paddingTop: SPACING.md,
     paddingBottom: SPACING.lg,
+  },
+  heading: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SPACING.md,
+  },
+  headingAccent: {
+    width: 4,
+    height: 34,
+    borderRadius: 2,
+    backgroundColor: COLORS.primary,
+    marginRight: SPACING.sm,
   },
   title: {
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.h18,
     color: COLORS.heading,
-    marginBottom: SPACING.sm,
+  },
+  subtitle: {
+    fontFamily: FONT_FAMILY.regular,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.placeholder,
+    marginTop: 2,
   },
   grid: {
     flexDirection: "row",
     alignItems: "flex-start",
     columnGap: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
 });
 

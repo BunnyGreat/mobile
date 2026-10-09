@@ -24,7 +24,10 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({ item }) => {
     <Pressable
       onPress={() => navigation.navigate(item.route)}
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-      android_ripple={{ color: COLORS.border }}
+      android_ripple={{ color: COLORS.border, borderless: false }}
+      accessibilityRole="button"
+      accessibilityLabel={item.title}
+      accessibilityHint={`Opens ${item.title}`}
     >
       <View style={styles.iconWrapper}>
         <Ionicons
@@ -40,23 +43,30 @@ const QuickActionCard: React.FC<QuickActionCardProps> = ({ item }) => {
 
 const styles = StyleSheet.create({
   card: {
-    width: 72,
+    width: 88,
+    minHeight: 102,
     alignItems: "center",
-    paddingVertical: SPACING.xs,
+    justifyContent: "center",
+    paddingHorizontal: SPACING.xs,
+    paddingVertical: SPACING.sm,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.inputBackground,
   },
   cardPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.95,
   },
   iconWrapper: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "#F2F7FF",
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: COLORS.white,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: SPACING.xs,
-    ...SHADOWS.small,
+    marginBottom: SPACING.sm,
+    ...SHADOWS.soft,
   },
   title: {
     fontFamily: FONT_FAMILY.semibold,
@@ -64,6 +74,7 @@ const styles = StyleSheet.create({
     color: COLORS.heading,
     textAlign: "center",
     lineHeight: 16,
+    minHeight: 32,
   },
 });
 

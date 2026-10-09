@@ -27,10 +27,10 @@ const CARD_HEIGHT = 165;
 const heroCards = [
   {
     id: "1",
-    category: "ANNOUNCEMENT",
-    title: "Barangay Assembly Meeting",
+    category: "STAY INFORMED",
+    title: "Community updates",
     description:
-      "Stay updated on community plans, local concerns, and important decisions that affect our barangay.",
+      "Visit Announcements for notices and updates shared by the barangay.",
     backgroundColor: "#1565C0",
     iconImage: require("../../../../assets/icons/megaphone.png"),
   },
