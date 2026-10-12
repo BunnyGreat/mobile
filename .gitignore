@@ -34,6 +34,8 @@ yarn-error.*
 .env
 .env.local
 .env.*.local
+.dev.vars
+.dev.vars.*
 
 # typescript
 *.tsbuildinfo
@@ -44,3 +46,13 @@ yarn-error.*
 
 # Supabase local generated files
 supabase/.temp/
+
+# Cloudflare Worker local secrets
+cloudflare/**/.dev.vars
+cloudflare/**/.dev.vars.*
+cloudflare/**/.env
+cloudflare/**/.env.*
+cloudflare/**/.wrangler/
+
+# Wrangler local state and generated files
+.wrangler/

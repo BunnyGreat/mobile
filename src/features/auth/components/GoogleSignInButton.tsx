@@ -62,7 +62,7 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
   return (
     <TouchableOpacity
       accessibilityLabel={
-        isBusy ? "Connecting with Google" : "Continue with Google"
+        isBusy ? "Signing in with Google" : "Continue with Google"
       }
       accessibilityRole="button"
       accessibilityState={{ busy: isBusy, disabled: isDisabled }}
@@ -82,7 +82,7 @@ const GoogleSignInButton: React.FC<GoogleSignInButtonProps> = ({
           <GoogleLogo />
         )}
         <Text style={[styles.label, isDisabled && styles.labelDisabled]}>
-          {isBusy ? "Connecting..." : "Continue with Google"}
+          {isBusy ? "Signing in with Google..." : "Continue with Google"}
         </Text>
       </View>
     </TouchableOpacity>

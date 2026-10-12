@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,7 @@ import {
   getGoogleAuthenticationErrorMessage,
   isGoogleSignInCancelled,
 } from "../../services/google-auth.service";
+import { runSingleFlightAction } from "../../services/singleFlightAction";
 import { createRegistrationOtp } from "../register/services/register.service";
 import { useRegisterStore } from "../register/store/register.store";
 
@@ -35,6 +36,7 @@ const LoginScreen: React.FC = () => {
   const setLoading = useLoginStore((s) => s.setLoading);
   const saveGoogleAccount = useRegisterStore((s) => s.saveGoogleAccount);
   const setOtp = useRegisterStore((s) => s.setOtp);
+  const googleSignInGuard = useRef({ current: false });
 
   const { control, handleSubmit, formState } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -77,60 +79,63 @@ const LoginScreen: React.FC = () => {
 
   const onGoogleSignIn = async () => {
     if (isLoading) return;
-    setLoading(true);
 
-    try {
-      const result = await authenticateGoogleResident();
-      if (result.type === "new-registration") {
-        let otp: Awaited<ReturnType<typeof createRegistrationOtp>>;
+    await runSingleFlightAction(
+      googleSignInGuard.current,
+      setLoading,
+      async () => {
         try {
-          otp = await createRegistrationOtp(result.email);
-        } catch {
+          const result = await authenticateGoogleResident();
+          if (result.type === "new-registration") {
+            let otp: Awaited<ReturnType<typeof createRegistrationOtp>>;
+            try {
+              otp = await createRegistrationOtp(result.email);
+            } catch {
+              Alert.alert(
+                "Registration Code Failed",
+                "Unable to send a registration code to your verified Google email. Please try again.",
+              );
+              return;
+            }
+            saveGoogleAccount(result.email, result.firebaseUid);
+            setOtp(otp.code, otp.createdAt, otp.expiresAt);
+            navigation.navigate("RegisterOtp");
+            return;
+          }
+
+          if (result.user.status === "pending") {
+            Alert.alert(
+              "Account Pending",
+              "Your registration is still under review.",
+            );
+            return;
+          }
+          if (result.user.status === "rejected") {
+            Alert.alert(
+              "Registration Rejected",
+              "Your registration has been rejected.",
+            );
+            return;
+          }
+          if (result.user.status !== "approved") {
+            Alert.alert("Sign-In Failed", "Your account is not approved.");
+            return;
+          }
+
+          setUser(result.user);
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "MainTabs" }],
+          });
+        } catch (error: unknown) {
+          if (isGoogleSignInCancelled(error)) return;
           Alert.alert(
-            "Registration Code Failed",
-            "Unable to send a registration code to your verified Google email. Please try again.",
+            "Google Sign-In Failed",
+            getGoogleAuthenticationErrorMessage(error),
           );
-          return;
         }
-        saveGoogleAccount(result.email, result.firebaseUid);
-        setOtp(otp.code, otp.createdAt, otp.expiresAt);
-        navigation.navigate("RegisterOtp");
-        return;
-      }
-
-      if (result.user.status === "pending") {
-        Alert.alert(
-          "Account Pending",
-          "Your registration is still under review.",
-        );
-        return;
-      }
-      if (result.user.status === "rejected") {
-        Alert.alert(
-          "Registration Rejected",
-          "Your registration has been rejected.",
-        );
-        return;
-      }
-      if (result.user.status !== "approved") {
-        Alert.alert("Sign-In Failed", "Your account is not approved.");
-        return;
-      }
-
-      setUser(result.user);
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "MainTabs" }],
-      });
-    } catch (error: unknown) {
-      if (isGoogleSignInCancelled(error)) return;
-      Alert.alert(
-        "Google Sign-In Failed",
-        getGoogleAuthenticationErrorMessage(error),
-      );
-    } finally {
-      setLoading(false);
-    }
+      },
+    );
   };
 
   return (

@@ -10,6 +10,7 @@ const KOTLIN_VERSION = "2.2.21";
 const ANDROID_GRADLE_PLUGIN_VERSION = "8.11.1";
 const GRADLE_VERSION = "8.13";
 const NDK_VERSION = "27.3.13750724";
+const GOOGLE_PLAY_SERVICES_AUTH_VERSION = "21.4.0";
 
 const replaceVersion = async (filePath, pattern, replacement, expected) => {
   const contents = await fs.readFile(filePath, "utf8");
@@ -91,6 +92,11 @@ const withVisionCameraAndroidToolchain = (config) =>
           "react-native-vision-camera-face-detector",
           "android/build.gradle",
         );
+        const nitroGoogleSignInBuildGradlePath = getNativePackageFile(
+          projectRoot,
+          "react-native-nitro-google-signin",
+          "android/build.gradle",
+        );
 
         await replaceVersion(
           cameraBuildGradlePath,
@@ -109,6 +115,18 @@ const withVisionCameraAndroidToolchain = (config) =>
           /def kotlinVersion = safeExtGet\("VisionCameraFaceDetector_kotlinVersion", "([^"]+)"\)/,
           KOTLIN_VERSION,
           "2.1.20",
+        );
+        await replaceVersion(
+          nitroGoogleSignInBuildGradlePath,
+          /classpath "com\.android\.tools\.build:gradle:([^"]+)"/,
+          ANDROID_GRADLE_PLUGIN_VERSION,
+          "8.8.0",
+        );
+        await replaceVersion(
+          nitroGoogleSignInBuildGradlePath,
+          /implementation "com\.google\.android\.gms:play-services-auth:([^"]+)"/,
+          GOOGLE_PLAY_SERVICES_AUTH_VERSION,
+          "22.0.0",
         );
 
         await fs.writeFile(

@@ -31,11 +31,13 @@ export const supabaseSignIn = async (email: string, password: string): Promise<S
 
 export const supabaseSignInWithGoogleIdToken = async (
   token: string,
+  nonce?: string,
 ): Promise<SupabaseAuthResult> => {
   try {
     const { data, error } = await supabase.auth.signInWithIdToken({
       provider: "google",
       token,
+      ...(nonce ? { nonce } : {}),
     });
     if (error) return { error, data };
     if (!data.session) {
