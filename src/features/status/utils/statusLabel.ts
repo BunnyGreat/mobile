@@ -26,6 +26,7 @@ export const getStatusLabel = (status: RequestStatus): string => {
 export const getCertificateTypeLabel = (type: CertificateType): string => {
   switch (type) {
     case "barangay_clearance":
+    case "Barangay Clearance":
       return "Barangay Clearance";
     case "certificate_of_indigency":
       return "Certificate of Indigency";

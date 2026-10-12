@@ -4,6 +4,7 @@ export type RequestStatus = CertificateStatus | AppointmentStatus;
 
 export type CertificateType =
   | "barangay_clearance"
+  | "Barangay Clearance"
   | "certificate_of_indigency"
   | "certificate_of_residency"
   | "Barangay Certification"

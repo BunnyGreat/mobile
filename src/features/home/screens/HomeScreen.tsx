@@ -5,6 +5,7 @@ import { COLORS, SPACING } from "../../../theme";
 import HeroHeader from "../components/HeroHeader";
 import HeroCarousel from "../components/HeroCarousel";
 import QuickActionsGrid from "../components/QuickActionsGrid";
+import RecentCertificateRequests from "../components/RecentCertificateRequests";
 import DashboardSkeleton from "../components/DashboardSkeleton";
 import { useDashboard } from "../hooks/useDashboard";
 
@@ -39,6 +40,7 @@ const HomeScreen: React.FC = () => {
         <HeroHeader />
         <HeroCarousel />
         <QuickActionsGrid />
+        <RecentCertificateRequests />
       </ScrollView>
     </SafeAreaView>
   );

@@ -4,11 +4,15 @@ import { loadArchivedRequests } from "../services/archive.service";
 import type { StatusStoreState, UnifiedRequest, FilterType } from "../types/status.types";
 import { auth } from "../../../services/firebase/firebase";
 
+const requestSubscribers = new Set<symbol>();
+let requestSubscriptionUid: string | null = null;
+let requestSubscription: (() => void) | null = null;
+
 const isArchivedRequest = (request: UnifiedRequest, archived: Array<{ id: string; type: UnifiedRequest["type"] }>): boolean => {
   return archived.some((item) => item.id === request.id && item.type === request.type);
 };
 
-const isActiveRequest = (request: UnifiedRequest): boolean => {
+export const isActiveRequest = (request: UnifiedRequest): boolean => {
   return request.status !== "completed" && request.status !== "rejected";
 };
 
@@ -73,21 +77,41 @@ export const useStatusStore = create<StatusStoreState>((set, get) => ({
       return () => {};
     }
 
-    const unsubscribe = subscribeToRequests(
-      currentUser.uid,
-      async (requests) => {
-        const archived = await loadArchivedRequests();
-        const visibleRequests = requests.filter((request) => isActiveRequest(request));
-        const activeArchivedEntries = requests.filter((request) => !isActiveRequest(request));
-        const archivedEntries = activeArchivedEntries.filter((request) => isArchivedRequest(request, archived) || !isActiveRequest(request));
-        set({ requests: visibleRequests, error: null, archivedRequests: archivedEntries });
-      },
-      (error) => {
-        set({ error: error.message });
-      },
-    );
+    if (requestSubscriptionUid !== currentUser.uid) {
+      requestSubscription?.();
+      requestSubscribers.clear();
+      requestSubscriptionUid = currentUser.uid;
+      requestSubscription = null;
+    }
 
-    return unsubscribe;
+    const subscriberId = Symbol("request-subscriber");
+    requestSubscribers.add(subscriberId);
+
+    if (!requestSubscription) {
+      requestSubscription = subscribeToRequests(
+        currentUser.uid,
+        async (requests) => {
+          const archived = await loadArchivedRequests();
+          const visibleRequests = requests.filter((request) => isActiveRequest(request));
+          const activeArchivedEntries = requests.filter((request) => !isActiveRequest(request));
+          const archivedEntries = activeArchivedEntries.filter((request) => isArchivedRequest(request, archived) || !isActiveRequest(request));
+          set({ requests: visibleRequests, error: null, archivedRequests: archivedEntries });
+        },
+        (error) => {
+          set({ error: error.message });
+        },
+      );
+    }
+
+    return () => {
+      if (!requestSubscribers.delete(subscriberId) || requestSubscribers.size > 0) {
+        return;
+      }
+
+      requestSubscription?.();
+      requestSubscription = null;
+      requestSubscriptionUid = null;
+    };
   },
 
   setActiveFilter: (filter: FilterType) => set({ activeFilter: filter }),

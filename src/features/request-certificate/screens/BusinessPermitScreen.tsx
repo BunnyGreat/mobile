@@ -188,11 +188,7 @@ const BusinessPermitScreen: React.FC = () => {
           isFirst
         >
           <ReadOnlyField label="Full Name" value={fullName} />
-          <ReadOnlyField
-            label="Full Address"
-            value={residentialAddress}
-          />
-          <ReadOnlyField label="Contact Number" value={residentContact} />
+          <ReadOnlyField label="Full Address" value={residentialAddress} />
           <View style={styles.row}>
             <View style={styles.rowHalf}>
               <ReadOnlyField
@@ -204,6 +200,7 @@ const BusinessPermitScreen: React.FC = () => {
               <ReadOnlyField label="Birthplace" value={birthplace} />
             </View>
           </View>
+          <ReadOnlyField label="Contact Number" value={residentContact} />
         </CertificateSection>
 
         <CertificateSection
