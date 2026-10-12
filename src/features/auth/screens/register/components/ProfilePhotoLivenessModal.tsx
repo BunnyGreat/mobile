@@ -22,6 +22,11 @@ import {
   useFaceDetector,
 } from "react-native-vision-camera-face-detector";
 import { Worklets } from "react-native-worklets-core";
+import {
+  getDetectionFrameDimensions,
+  LivenessChallenge,
+  type LivenessPhase,
+} from "./livenessChallenge";
 
 type Props = {
   visible: boolean;
@@ -29,29 +34,8 @@ type Props = {
   onPhotoCaptured: (uri: string) => Promise<void>;
 };
 
-type ChallengePhase = "positioning" | "turning" | "capturing" | "failed";
-
-const CENTER_HOLD_MS = 900;
-const TURN_HOLD_MS = 400;
-const CHALLENGE_TIMEOUT_MS = 45_000;
-const MAX_CENTER_OFFSET = 0.2;
+const CHALLENGE_TIMEOUT_MS = 90_000;
 const MIN_FACE_WIDTH = 0.15;
-const MAX_FACE_WIDTH = 0.8;
-const TURN_ANGLE_DEGREES = 22;
-const MIN_TURN_STEP_DEGREES = 2;
-
-const isFaceCentered = (face: Face, frameWidth: number, frameHeight: number) => {
-  const centerX = (face.bounds.x + face.bounds.width / 2) / frameWidth;
-  const centerY = (face.bounds.y + face.bounds.height / 2) / frameHeight;
-  const faceWidth = face.bounds.width / frameWidth;
-
-  return (
-    Math.abs(centerX - 0.5) <= MAX_CENTER_OFFSET &&
-    Math.abs(centerY - 0.5) <= MAX_CENTER_OFFSET &&
-    faceWidth >= MIN_FACE_WIDTH &&
-    faceWidth <= MAX_FACE_WIDTH
-  );
-};
 
 const getFileUri = (path: string) =>
   path.startsWith("file://") ? path : `file://${path}`;
@@ -74,6 +58,8 @@ const ProfilePhotoDetectionCamera: React.FC<
   const faceDetectionOptions = useRef<FrameFaceDetectionOptions>({
     cameraFacing: "front",
     performanceMode: "fast",
+    classificationMode: "all",
+    landmarkMode: "all",
     minFaceSize: MIN_FACE_WIDTH,
     trackingEnabled: true,
   }).current;
@@ -83,7 +69,15 @@ const ProfilePhotoDetectionCamera: React.FC<
       Worklets.createRunOnJS(
         (facesJSON: string, frameWidth: number, frameHeight: number) => {
           const faces: Face[] = JSON.parse(facesJSON);
-          onFacesDetected(faces, frameWidth, frameHeight);
+          const detectionDimensions = getDetectionFrameDimensions(
+            frameWidth,
+            frameHeight,
+          );
+          onFacesDetected(
+            faces,
+            detectionDimensions.width,
+            detectionDimensions.height,
+          );
         },
       ),
     [onFacesDetected],
@@ -108,6 +102,7 @@ const ProfilePhotoDetectionCamera: React.FC<
       style={StyleSheet.absoluteFill}
       device={device}
       isActive={isActive}
+      outputOrientation="preview"
       photo={true}
       frameProcessor={frameProcessor}
       onError={onError}
@@ -123,36 +118,35 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
   const device = useCameraDevice("front");
   const permission = useCameraPermission();
   const cameraRef = useRef<Camera>(null);
+  const challengeRef = useRef(new LivenessChallenge());
 
-  const [phase, setPhase] = useState<ChallengePhase>("positioning");
-  const [message, setMessage] = useState(
-    "Center your face inside the guide and look straight at the camera.",
+  const [phase, setPhase] = useState<LivenessPhase>("centering");
+  const [guidance, setGuidance] = useState(
+    "Center your face and look directly at the camera.",
   );
   const [failureMessage, setFailureMessage] = useState("");
   const [permissionError, setPermissionError] = useState("");
   const [permissionDenied, setPermissionDenied] = useState(false);
 
-  const phaseRef = useRef<ChallengePhase>("positioning");
-  const centerStartedAtRef = useRef<number | null>(null);
-  const baselineYawRef = useRef<number | null>(null);
-  const previousYawDeltaRef = useRef<number | null>(null);
-  const turnStartedAtRef = useRef<number | null>(null);
-  const turnFrameCountRef = useRef(0);
+  const phaseRef = useRef<LivenessPhase>("centering");
+  const guidanceRef = useRef("Center your face and look directly at the camera.");
   const captureStartedRef = useRef(false);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const setCurrentPhase = useCallback((nextPhase: ChallengePhase) => {
+  const setCurrentPhase = useCallback((nextPhase: LivenessPhase) => {
     phaseRef.current = nextPhase;
     setPhase(nextPhase);
   }, []);
 
   const failChallenge = useCallback(
     (reason: string) => {
-      if (phaseRef.current === "capturing" || phaseRef.current === "failed") {
-        return;
+      challengeRef.current.fail(reason);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
       setCurrentPhase("failed");
-      setFailureMessage(reason);
+      setFailureMessage(challengeRef.current.failureMessage);
     },
     [setCurrentPhase],
   );
@@ -167,24 +161,17 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
   const startTimeoutTimer = useCallback(() => {
     clearTimeoutTimer();
     timeoutRef.current = setTimeout(() => {
-      failChallenge(
-        "The movement check timed out. Retry when you are ready.",
-      );
+      failChallenge(`This step timed out. ${guidanceRef.current} Please try again.`);
     }, CHALLENGE_TIMEOUT_MS);
   }, [clearTimeoutTimer, failChallenge]);
 
   const resetChallenge = useCallback(() => {
-    centerStartedAtRef.current = null;
-    baselineYawRef.current = null;
-    previousYawDeltaRef.current = null;
-    turnStartedAtRef.current = null;
-    turnFrameCountRef.current = 0;
+    challengeRef.current.reset();
     captureStartedRef.current = false;
     setFailureMessage("");
-    setCurrentPhase("positioning");
-    setMessage(
-      "Center your face inside the guide and look straight at the camera.",
-    );
+    guidanceRef.current = "Center your face and look directly at the camera.";
+    setGuidance(guidanceRef.current);
+    setCurrentPhase("centering");
     startTimeoutTimer();
   }, [setCurrentPhase, startTimeoutTimer]);
 
@@ -193,7 +180,6 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
 
     captureStartedRef.current = true;
     setCurrentPhase("capturing");
-    setMessage("Movement check passed. Capturing your profile photo...");
 
     try {
       const camera = cameraRef.current;
@@ -205,19 +191,23 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
       });
       await onPhotoCaptured(getFileUri(photo.path));
       clearTimeoutTimer();
-      onClose();
+      challengeRef.current.completeCapture();
+      setCurrentPhase("success");
+      guidanceRef.current = "Liveness verified. Your photo is ready.";
+      setGuidance(guidanceRef.current);
+      timeoutRef.current = setTimeout(onClose, 900);
     } catch (error: unknown) {
       const reason =
         error instanceof Error
           ? error.message
           : "The photo could not be captured. Please retry.";
       console.error("Profile photo capture failed.", error);
+      failChallenge(reason);
       captureStartedRef.current = false;
-      setCurrentPhase("failed");
-      setFailureMessage(reason);
     }
   }, [
     clearTimeoutTimer,
+    failChallenge,
     onClose,
     onPhotoCaptured,
     setCurrentPhase,
@@ -233,112 +223,59 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
 
   const handleFacesDetected = useCallback(
     (faces: Face[], frameWidth: number, frameHeight: number) => {
-      if (phaseRef.current === "capturing" || phaseRef.current === "failed") {
-        return;
-      }
-
-      if (faces.length > 1) {
-        failChallenge(
-          "More than one face was detected. Make sure you are alone in the frame, then retry.",
-        );
+      const challenge = challengeRef.current;
+      if (
+        challenge.phase === "capturing" ||
+        challenge.phase === "success" ||
+        challenge.phase === "failed"
+      ) {
         return;
       }
 
       if (faces.length === 0) {
-        centerStartedAtRef.current = null;
-        baselineYawRef.current = null;
-        previousYawDeltaRef.current = null;
-        turnStartedAtRef.current = null;
-        turnFrameCountRef.current = 0;
-        if (phaseRef.current === "turning") {
-          failChallenge(
-            "Your face left the guide during the challenge. Please retry.",
-          );
-        } else {
-          setMessage("No face detected. Center your face inside the guide.");
+        const noFaceMessage =
+          "No face detected. Keep your face visible in the guide.";
+        if (guidanceRef.current !== noFaceMessage) {
+          guidanceRef.current = noFaceMessage;
+          setGuidance(noFaceMessage);
         }
         return;
       }
 
-      const face = faces[0];
-      if (!isFaceCentered(face, frameWidth, frameHeight)) {
-        centerStartedAtRef.current = null;
-        baselineYawRef.current = null;
-        previousYawDeltaRef.current = null;
-        turnStartedAtRef.current = null;
-        turnFrameCountRef.current = 0;
-        if (phaseRef.current === "turning") {
-          failChallenge(
-            "Keep your face near the center while turning, then retry.",
-          );
-        } else {
-          setMessage("Move closer and center your face inside the guide.");
-        }
+      const update = challenge.process(faces, frameWidth, frameHeight);
+      if (update.phase === "failed") {
+        clearTimeoutTimer();
+        setCurrentPhase("failed");
+        setFailureMessage(update.failureMessage ?? "Face check failed. Please retry.");
         return;
       }
 
-      const now = Date.now();
-      if (phaseRef.current === "positioning") {
-        if (Math.abs(face.yawAngle) > 15) {
-          centerStartedAtRef.current = null;
-          baselineYawRef.current = null;
-          previousYawDeltaRef.current = null;
-          setMessage("Look straight at the camera and hold still.");
-          return;
+      if (update.phase !== phaseRef.current) {
+        setCurrentPhase(update.phase);
+        const messages: Partial<Record<LivenessPhase, string>> = {
+          centering: "Center your face and look directly at the camera.",
+          "look-left": "Slowly look to your left.",
+          "look-right": "Slowly look to your right.",
+          blinking: "Please blink naturally.",
+          returning: "Return to the center and look directly at the camera.",
+          capturing: "Liveness checks passed. Capturing your photo...",
+          success: "Liveness verified. Your photo is ready.",
+        };
+        const nextGuidance = messages[update.phase];
+        if (nextGuidance) {
+          guidanceRef.current = nextGuidance;
+          setGuidance(nextGuidance);
         }
-
-        if (centerStartedAtRef.current === null) {
-          centerStartedAtRef.current = now;
-          baselineYawRef.current = face.yawAngle;
-          setMessage("Hold still while we check your position...");
-          return;
-        }
-
-        if (now - centerStartedAtRef.current >= CENTER_HOLD_MS) {
-          setCurrentPhase("turning");
-          previousYawDeltaRef.current = 0;
-          turnStartedAtRef.current = null;
-          turnFrameCountRef.current = 0;
-          setMessage("Slowly turn your head to either side.");
-        }
-        return;
       }
-
-      const baselineYaw = baselineYawRef.current;
-      if (baselineYaw === null) {
-        failChallenge("We could not establish a starting position. Please retry.");
-        return;
-      }
-
-      const yawDelta = Math.abs(face.yawAngle - baselineYaw);
-      const previousYawDelta = previousYawDeltaRef.current;
-      if (
-        previousYawDelta !== null &&
-        yawDelta - previousYawDelta >= MIN_TURN_STEP_DEGREES
-      ) {
-        if (turnStartedAtRef.current === null) {
-          turnStartedAtRef.current = now;
-        }
-        turnFrameCountRef.current += 1;
-      } else if (
-        previousYawDelta !== null &&
-        previousYawDelta - yawDelta >= MIN_TURN_STEP_DEGREES
-      ) {
-        turnStartedAtRef.current = null;
-        turnFrameCountRef.current = 0;
-      }
-      previousYawDeltaRef.current = yawDelta;
-
-      if (
-        yawDelta >= TURN_ANGLE_DEGREES &&
-        turnFrameCountRef.current >= 2 &&
-        turnStartedAtRef.current !== null &&
-        now - turnStartedAtRef.current >= TURN_HOLD_MS
-      ) {
+      if (update.shouldCapture) {
         void captureVerifiedPhoto();
       }
     },
-    [captureVerifiedPhoto, failChallenge, setCurrentPhase],
+    [
+      captureVerifiedPhoto,
+      clearTimeoutTimer,
+      setCurrentPhase,
+    ],
   );
 
   useEffect(() => {
@@ -386,7 +323,23 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
         },
       );
     }
-    resetChallenge();
+    captureStartedRef.current = false;
+    setFailureMessage("");
+    const resumedPhase = challengeRef.current.retry();
+    setCurrentPhase(resumedPhase);
+    const retryInstructions: Partial<Record<LivenessPhase, string>> = {
+      centering: "Center your face and look directly at the camera.",
+      "look-left": "Please repeat the look-left movement.",
+      "look-right": "Please repeat the look-right movement.",
+      blinking: "Please blink naturally again.",
+      returning: "Return to the center and look directly at the camera.",
+      capturing: "Liveness checks passed. Capturing your photo...",
+    };
+    guidanceRef.current =
+      retryInstructions[resumedPhase] ??
+      "Continue the liveness check where it stopped.";
+    setGuidance(guidanceRef.current);
+    startTimeoutTimer();
   };
 
   const openSettings = () => {
@@ -405,6 +358,47 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
       onClose();
     }
   };
+
+  const steps = [
+    "Center face",
+    "Look left",
+    "Look right",
+    "Blink",
+    "Return center",
+    "Capture",
+  ];
+  const activeStepIndex =
+    phase === "centering"
+      ? 0
+      : phase === "look-left"
+        ? 1
+        : phase === "look-right"
+          ? 2
+          : phase === "blinking"
+            ? 3
+            : phase === "returning"
+              ? 4
+              : 5;
+  const instruction =
+    phase === "failed"
+      ? failureMessage
+      : phase === "capturing"
+        ? "Liveness checks passed. Capturing your photo..."
+        : guidance;
+  const displayedStepIndex =
+    phase === "failed"
+      ? challengeRef.current.failedAtPhase === "centering"
+        ? 0
+        : challengeRef.current.failedAtPhase === "look-left"
+          ? 1
+          : challengeRef.current.failedAtPhase === "look-right"
+            ? 2
+            : challengeRef.current.failedAtPhase === "blinking"
+              ? 3
+              : challengeRef.current.failedAtPhase === "returning"
+                ? 4
+                : 5
+      : activeStepIndex;
 
   return (
     <Modal
@@ -436,8 +430,42 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
                 </TouchableOpacity>
                 <Text style={styles.title}>Verify your profile photo</Text>
                 <Text style={styles.subtitle}>
-                  Center one face in the guide, then slowly turn your head to
-                  either side.
+                  Complete each step while keeping your face visible and inside
+                  the guide.
+                </Text>
+              </View>
+
+              <View style={styles.progressSection}>
+                <Text style={styles.progressTitle}>
+                  {phase === "success"
+                    ? "All steps complete"
+                    : `Step ${Math.min(displayedStepIndex + 1, steps.length)} of ${steps.length}`}
+                </Text>
+                <View style={styles.progressSteps}>
+                  {steps.map((step, index) => (
+                    <View
+                      key={step}
+                      accessibilityLabel={`${step}: ${
+                        index < displayedStepIndex || phase === "success"
+                          ? "complete"
+                          : index === displayedStepIndex
+                            ? "in progress"
+                            : "not started"
+                      }`}
+                      style={[
+                        styles.progressStep,
+                        index < displayedStepIndex && styles.progressStepComplete,
+                        index === displayedStepIndex &&
+                          phase !== "failed" &&
+                          phase !== "success" &&
+                          styles.progressStepActive,
+                        phase === "success" && styles.progressStepComplete,
+                      ]}
+                    />
+                  ))}
+                </View>
+                <Text style={styles.activeStepLabel}>
+                  {steps[displayedStepIndex]}
                 </Text>
               </View>
 
@@ -445,20 +473,23 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
                 accessibilityLabel="Face position guide"
                 style={[
                   styles.faceGuide,
-                  phase === "turning" && styles.faceGuideActive,
+                  phase !== "failed" && styles.faceGuideActive,
                 ]}
               />
 
               <View style={styles.footer}>
                 <Text accessibilityLiveRegion="polite" style={styles.message}>
-                  {phase === "failed" ? failureMessage : message}
+                  {instruction}
                 </Text>
-                {phase === "capturing" ? (
+                {phase !== "failed" && phase !== "success" ? (
                   <ActivityIndicator
-                    accessibilityLabel="Capturing profile photo"
+                    accessibilityLabel="Checking liveness step"
                     color="#FFFFFF"
                     style={styles.loader}
                   />
+                ) : null}
+                {phase === "success" ? (
+                  <Text style={styles.successMark}>✓</Text>
                 ) : null}
                 {phase === "failed" ? (
                   <TouchableOpacity
@@ -575,6 +606,40 @@ const styles = StyleSheet.create({
   faceGuideActive: {
     borderColor: "#54D68A",
   },
+  progressSection: {
+    width: "100%",
+    alignItems: "center",
+    marginTop: 18,
+  },
+  progressTitle: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  progressSteps: {
+    width: "100%",
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 10,
+  },
+  progressStep: {
+    flex: 1,
+    height: 6,
+    borderRadius: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.35)",
+  },
+  progressStepActive: {
+    backgroundColor: "#F0C75E",
+  },
+  progressStepComplete: {
+    backgroundColor: "#54D68A",
+  },
+  activeStepLabel: {
+    marginTop: 8,
+    color: "#F0F3F5",
+    fontSize: 12,
+    fontWeight: "600",
+  },
   footer: {
     width: "100%",
     minHeight: 130,
@@ -590,6 +655,12 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginTop: 8,
+  },
+  successMark: {
+    marginTop: 6,
+    color: "#54D68A",
+    fontSize: 30,
+    fontWeight: "700",
   },
   primaryButton: {
     minWidth: 160,

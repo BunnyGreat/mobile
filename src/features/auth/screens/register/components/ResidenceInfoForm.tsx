@@ -9,7 +9,6 @@ type ResidenceInfoFormState = {
   blockNumber: string;
   lotNumber: string;
   subdivision: string;
-  barangay: string;
 };
 
 type Props = {
@@ -17,16 +16,12 @@ type Props = {
   onBack?: () => void;
 };
 
-const barangayOptions = ["San Isidro", "San Roque", "Poblacion", "Mabini"];
-
 const ResidenceInfoForm: React.FC<Props> = ({ onNext, onBack }) => {
   const [form, setForm] = useState<ResidenceInfoFormState>({
     blockNumber: "",
     lotNumber: "",
     subdivision: "",
-    barangay: "San Isidro",
   });
-  const [barangayOpen, setBarangayOpen] = useState(false);
   const [blockNumberError, setBlockNumberError] = useState("");
   const [lotNumberError, setLotNumberError] = useState("");
   const [subdivisionError, setSubdivisionError] = useState("");
@@ -56,7 +51,7 @@ const ResidenceInfoForm: React.FC<Props> = ({ onNext, onBack }) => {
           houseNumber: form.blockNumber.trim(),
           street: form.lotNumber.trim(),
           purok: form.subdivision.trim(),
-          barangay: form.barangay,
+          barangay: "San Isidro",
           municipality: "Rodriguez (Montalban)",
           province: "Rizal",
         });
@@ -138,37 +133,13 @@ const ResidenceInfoForm: React.FC<Props> = ({ onNext, onBack }) => {
         error={subdivisionError}
       />
 
-      <View style={styles.dropdownWrapper}>
-        <Text style={styles.fieldLabel}>
-          Barangay
-          <Text style={styles.required}>*</Text>
-        </Text>
-        <TouchableOpacity
-          style={styles.dropdownButton}
-          activeOpacity={0.8}
-          onPress={() => setBarangayOpen((prev) => !prev)}
-        >
-          <Text style={styles.dropdownButtonText}>{form.barangay}</Text>
-          <Text style={styles.dropdownChevron}>{barangayOpen ? "▲" : "▼"}</Text>
-        </TouchableOpacity>
-        {barangayOpen && (
-          <View style={styles.dropdownMenu}>
-            {barangayOptions.map((option) => (
-              <TouchableOpacity
-                key={option}
-                style={styles.dropdownOption}
-                activeOpacity={0.8}
-                onPress={() => {
-                  handleChange("barangay", option);
-                  setBarangayOpen(false);
-                }}
-              >
-                <Text style={styles.dropdownOptionText}>{option}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </View>
+      <AppInput
+        label="Barangay"
+        required
+        value="San Isidro"
+        editable={false}
+        inputStyle={{ backgroundColor: COLORS.background }}
+      />
 
       <AppInput
         label="Municipality"
