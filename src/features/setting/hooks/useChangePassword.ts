@@ -3,7 +3,10 @@ import { Alert } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { auth } from "../../../services/firebase/firebase";
 import { changePassword } from "../services/changePassword.service";
-import { useSettingsStore } from "../store/settings.store";
+import {
+  LOGOUT_FAILURE_MESSAGE,
+  useSettingsStore,
+} from "../store/settings.store";
 import { RootStackNavigationProp } from "../../../navigation/types";
 import { usePasswordValidation } from "./usePasswordValidation";
 
@@ -103,7 +106,7 @@ export const useChangePassword = () => {
               } else {
                 Alert.alert(
                   "Logout Failed",
-                  "Unable to sign out. Please try again.",
+                  LOGOUT_FAILURE_MESSAGE,
                 );
               }
             },

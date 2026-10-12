@@ -258,7 +258,7 @@ const maybeNotifyAndArchive = async ({
     const nextStatus = status as AppointmentRequest["status"];
 
     if (nextStatus === "completed" || nextStatus === "rejected") {
-      await archiveRequest({
+      await archiveRequest(uid, {
         id: referenceId,
         type: "appointment",
         title,
@@ -278,7 +278,7 @@ const maybeNotifyAndArchive = async ({
   const nextStatus = status as CertificateRequest["status"];
 
   if (nextStatus === "completed" || nextStatus === "rejected") {
-    await archiveRequest({
+    await archiveRequest(uid, {
       id: referenceId,
       type: "certificate",
       title,
@@ -339,14 +339,13 @@ const unifyRequests = (
   );
 };
 
-export const fetchRequests = async (): Promise<UnifiedRequest[]> => {
-  const currentUser = auth.currentUser;
-  if (!currentUser?.uid) {
+export const fetchRequests = async (uid: string): Promise<UnifiedRequest[]> => {
+  if (!uid || auth.currentUser?.uid !== uid) {
     throw new Error("Authentication required.");
   }
 
   const certRef = collection(db, "certificate_requests");
-  const certQuery = query(certRef, where("uid", "==", currentUser.uid));
+  const certQuery = query(certRef, where("uid", "==", uid));
   const certSnapshot = await getDocs(certQuery);
   const certificates = certSnapshot.docs.map((doc) => {
     const data = doc.data();
@@ -363,7 +362,7 @@ export const fetchRequests = async (): Promise<UnifiedRequest[]> => {
   });
 
   const apptRef = collection(db, "appointments");
-  const apptQuery = query(apptRef, where("uid", "==", currentUser.uid));
+  const apptQuery = query(apptRef, where("uid", "==", uid));
   const apptSnapshot = await getDocs(apptQuery);
   const appointments = apptSnapshot.docs.map((doc) => {
     const data = doc.data();
@@ -383,12 +382,12 @@ export const fetchRequests = async (): Promise<UnifiedRequest[]> => {
     } satisfies AppointmentRequest;
   });
 
-  const cachedRequests = await getCachedRequests();
+  const cachedRequests = await getCachedRequests(uid);
   const fallbackAppointments = cachedRequests
     .filter((request) => request.type === "appointment")
     .map((request) => request.raw as AppointmentRequest)
     .filter(Boolean);
-  const notifications = await fetchNotifications(currentUser.uid);
+  const notifications = await fetchNotifications(uid);
   const unified = unifyRequests(
     certificates,
     appointments,
@@ -399,7 +398,7 @@ export const fetchRequests = async (): Promise<UnifiedRequest[]> => {
   await Promise.all(
     unified.map((request) =>
       maybeNotifyAndArchive({
-        uid: currentUser.uid,
+        uid,
         type: request.type,
         referenceId: request.id,
         status: request.status,
@@ -411,12 +410,12 @@ export const fetchRequests = async (): Promise<UnifiedRequest[]> => {
     ),
   );
 
-  await saveStatusCache(unified);
+  await saveStatusCache(uid, unified);
   return unified;
 };
 
-export const getCachedRequests = async (): Promise<UnifiedRequest[]> => {
-  return loadStatusCache();
+export const getCachedRequests = async (uid: string): Promise<UnifiedRequest[]> => {
+  return loadStatusCache(uid);
 };
 
 export const subscribeToRequests = (
@@ -424,6 +423,7 @@ export const subscribeToRequests = (
   onUpdate: (requests: UnifiedRequest[]) => void,
   onError?: (error: Error) => void,
 ): (() => void) => {
+  let isActive = true;
   const certRef = collection(db, "certificate_requests");
   const certQuery = query(certRef, where("uid", "==", uid));
 
@@ -438,7 +438,14 @@ export const subscribeToRequests = (
   let notificationUnsubscribe: (() => void) | null = null;
 
   const updateUI = async () => {
-    const cachedRequests = await getCachedRequests();
+    if (!isActive || auth.currentUser?.uid !== uid) {
+      return;
+    }
+
+    const cachedRequests = await getCachedRequests(uid);
+    if (!isActive || auth.currentUser?.uid !== uid) {
+      return;
+    }
     const fallbackAppointments = cachedRequests
       .filter((request) => request.type === "appointment")
       .map((request) => request.raw as AppointmentRequest)
@@ -466,8 +473,13 @@ export const subscribeToRequests = (
       ),
     );
 
-    await saveStatusCache(unified);
-    onUpdate(unified);
+    if (!isActive || auth.currentUser?.uid !== uid) {
+      return;
+    }
+    await saveStatusCache(uid, unified);
+    if (isActive && auth.currentUser?.uid === uid) {
+      onUpdate(unified);
+    }
   };
 
   certUnsubscribe = onSnapshot(
@@ -535,6 +547,7 @@ export const subscribeToRequests = (
   );
 
   return () => {
+    isActive = false;
     certUnsubscribe?.();
     apptUnsubscribe?.();
     notificationUnsubscribe?.();

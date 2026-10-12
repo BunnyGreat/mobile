@@ -1,19 +1,42 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { UnifiedRequest } from "../types/status.types";
 
-const STATUS_CACHE_KEY = "status_requests_cache";
+const STATUS_CACHE_PREFIX = "@barangay/status/requests";
+const LEGACY_STATUS_CACHE_KEY = "status_requests_cache";
+let legacyCacheCleanup: Promise<void> | null = null;
 
-export const saveStatusCache = async (requests: UnifiedRequest[]) => {
+const getStatusCacheKey = (uid: string) => `${STATUS_CACHE_PREFIX}:${uid}`;
+
+const removeLegacyStatusCache = async () => {
+  if (!legacyCacheCleanup) {
+    legacyCacheCleanup = AsyncStorage.removeItem(LEGACY_STATUS_CACHE_KEY).catch((error) => {
+      console.warn("Failed to remove legacy status cache", error);
+    });
+  }
+  await legacyCacheCleanup;
+};
+
+export const saveStatusCache = async (uid: string, requests: UnifiedRequest[]) => {
+  if (!uid) {
+    throw new Error("Authentication required to cache status requests.");
+  }
+
   try {
-    await AsyncStorage.setItem(STATUS_CACHE_KEY, JSON.stringify(requests));
+    await removeLegacyStatusCache();
+    await AsyncStorage.setItem(getStatusCacheKey(uid), JSON.stringify(requests));
   } catch (error) {
     console.warn("Failed to cache status requests", error);
   }
 };
 
-export const loadStatusCache = async (): Promise<UnifiedRequest[]> => {
+export const loadStatusCache = async (uid: string): Promise<UnifiedRequest[]> => {
+  if (!uid) {
+    return [];
+  }
+
   try {
-    const raw = await AsyncStorage.getItem(STATUS_CACHE_KEY);
+    await removeLegacyStatusCache();
+    const raw = await AsyncStorage.getItem(getStatusCacheKey(uid));
     if (!raw) {
       return [];
     }
@@ -26,9 +49,13 @@ export const loadStatusCache = async (): Promise<UnifiedRequest[]> => {
   }
 };
 
-export const clearStatusCache = async () => {
+export const clearStatusCache = async (uid: string) => {
+  if (!uid) {
+    return;
+  }
+
   try {
-    await AsyncStorage.removeItem(STATUS_CACHE_KEY);
+    await AsyncStorage.removeItem(getStatusCacheKey(uid));
   } catch (error) {
     console.warn("Failed to clear cached status requests", error);
   }

@@ -19,7 +19,10 @@ import TermsConditionsModal from "../components/modals/TermsConditionsModal";
 import DataPermissionsModal from "../components/modals/DataPermissionsModal";
 import AboutApplicationModal from "../components/modals/AboutApplicationModal";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../theme";
-import { useSettingsStore } from "../store/settings.store";
+import {
+  LOGOUT_FAILURE_MESSAGE,
+  useSettingsStore,
+} from "../store/settings.store";
 import type { RootStackNavigationProp } from "../../../navigation/types";
 import ProfileAvatar from "../../profile/components/ProfileAvatar";
 
@@ -66,7 +69,7 @@ const SettingScreen: React.FC = () => {
               routes: [{ name: "Login" }],
             });
           } else {
-            Alert.alert("Logout Failed", "Unable to logout. Please try again.");
+            Alert.alert("Logout Failed", LOGOUT_FAILURE_MESSAGE);
           }
         },
       },

@@ -6,6 +6,10 @@ import {
 } from "../services/notification.service";
 import type { SettingsProfile } from "../types/settings.types";
 
+export const LOGOUT_FAILURE_MESSAGE = "Unable to logout. Please try again.";
+
+let logoutPromise: Promise<boolean> | null = null;
+
 export interface SettingsStore {
   profile: SettingsProfile | null;
   isLoading: boolean;
@@ -58,21 +62,38 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
   },
   logout: async () => {
-    set({ logoutLoading: true, logoutError: null });
-
-    const result = await logoutUser();
-    if (!result.success) {
-      set({ logoutLoading: false, logoutError: result.error });
-      return false;
+    if (logoutPromise) {
+      return logoutPromise;
     }
 
-    set({
-      profile: null,
-      error: null,
-      logoutLoading: false,
-      logoutError: null,
+    set({ logoutLoading: true, logoutError: null });
+
+    logoutPromise = (async () => {
+      try {
+        const result = await logoutUser();
+        if (!result.success) {
+          set({ logoutLoading: false, logoutError: result.error });
+          return false;
+        }
+
+        set({
+          profile: null,
+          error: null,
+          logoutLoading: false,
+          logoutError: null,
+        });
+        return true;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : LOGOUT_FAILURE_MESSAGE;
+        set({ logoutLoading: false, logoutError: message });
+        return false;
+      }
+    })().finally(() => {
+      logoutPromise = null;
+      set({ logoutLoading: false });
     });
-    return true;
+
+    return logoutPromise;
   },
   clearSettings: () =>
     set({

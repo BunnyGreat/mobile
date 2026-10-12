@@ -1,7 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { UnifiedRequest } from "../types/status.types";
 
-const ARCHIVE_STORAGE_KEY = "@barangay/status/archive";
+const ARCHIVE_STORAGE_PREFIX = "@barangay/status/archive";
+const LEGACY_ARCHIVE_STORAGE_KEY = ARCHIVE_STORAGE_PREFIX;
+let legacyArchiveCleanup: Promise<void> | null = null;
+
+const getArchiveStorageKey = (uid: string) => `${ARCHIVE_STORAGE_PREFIX}:${uid}`;
+
+const removeLegacyArchive = async () => {
+  if (!legacyArchiveCleanup) {
+    legacyArchiveCleanup = AsyncStorage.removeItem(LEGACY_ARCHIVE_STORAGE_KEY).catch((error) => {
+      console.warn("[STATUS ARCHIVE] Failed to remove legacy archive", error);
+    });
+  }
+  await legacyArchiveCleanup;
+};
 
 export interface ArchivedRequestRef {
   id: string;
@@ -9,9 +22,14 @@ export interface ArchivedRequestRef {
   archivedAt: string;
 }
 
-export const loadArchivedRequests = async (): Promise<ArchivedRequestRef[]> => {
+export const loadArchivedRequests = async (uid: string): Promise<ArchivedRequestRef[]> => {
+  if (!uid) {
+    return [];
+  }
+
   try {
-    const raw = await AsyncStorage.getItem(ARCHIVE_STORAGE_KEY);
+    await removeLegacyArchive();
+    const raw = await AsyncStorage.getItem(getArchiveStorageKey(uid));
     if (!raw) {
       return [];
     }
@@ -24,8 +42,15 @@ export const loadArchivedRequests = async (): Promise<ArchivedRequestRef[]> => {
   }
 };
 
-export const archiveRequest = async (request: UnifiedRequest): Promise<ArchivedRequestRef> => {
-  const archived = await loadArchivedRequests();
+export const archiveRequest = async (
+  uid: string,
+  request: UnifiedRequest,
+): Promise<ArchivedRequestRef> => {
+  if (!uid) {
+    throw new Error("Authentication required to archive status requests.");
+  }
+
+  const archived = await loadArchivedRequests(uid);
   const nextEntries = archived.filter(
     (item) => !(item.id === request.id && item.type === request.type),
   );
@@ -38,7 +63,7 @@ export const archiveRequest = async (request: UnifiedRequest): Promise<ArchivedR
 
   nextEntries.unshift(entry);
 
-  await AsyncStorage.setItem(ARCHIVE_STORAGE_KEY, JSON.stringify(nextEntries));
+  await AsyncStorage.setItem(getArchiveStorageKey(uid), JSON.stringify(nextEntries));
   return entry;
 };
 
