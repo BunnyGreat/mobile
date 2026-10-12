@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
   card: {
     flex: 1,
     minWidth: 0,
-    padding: SPACING.sm + 2,
+    padding: SPACING.sm,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: COLORS.border,
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   cardTop: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     gap: SPACING.sm,
   },
   iconContainer: {
@@ -293,7 +293,6 @@ const styles = StyleSheet.create({
     backgroundColor: `${COLORS.primary}0D`,
   },
   requestName: {
-    minHeight: 36,
     flexShrink: 1,
     fontFamily: FONT_FAMILY.semibold,
     fontSize: FONT_SIZE.body13,
@@ -311,7 +310,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   cardStatus: {
-    paddingTop: SPACING.sm,
+    paddingTop: SPACING.xs,
   },
   statusPill: {
     alignSelf: "flex-start",
@@ -335,7 +334,6 @@ const styles = StyleSheet.create({
     color: COLORS.heading,
   },
   statusDescription: {
-    minHeight: 30,
     marginTop: SPACING.xs,
     fontFamily: FONT_FAMILY.regular,
     fontSize: FONT_SIZE.body11,
