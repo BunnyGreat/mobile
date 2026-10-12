@@ -2,3 +2,4 @@ export { default as RequestCertificateScreen } from "./screens/RequestCertificat
 export { default as BarangayClearanceScreen } from "./screens/BarangayClearanceScreen";
 export { default as BarangayCertificationScreen } from "./screens/BarangayCertificationScreen";
 export { default as CertificateOfIndigencyScreen } from "./screens/CertificateOfIndigencyScreen";
+export { default as BusinessPermitScreen } from "./screens/BusinessPermitScreen";

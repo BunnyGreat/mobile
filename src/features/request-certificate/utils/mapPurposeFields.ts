@@ -24,7 +24,7 @@ export const getPurposeFieldLabel = (purpose: CertificatePurpose): string | null
       return "Years of Residency";
     case "TESDA / School / OJT Requirement":
       return "School Name";
-    case "Loan Application":
+    case "Loan Application (Motorcycle, E-Bike, Housing & Car)":
       return "Loan Type";
     case "LTOPF Requirement":
       return "Firearm Type";
@@ -34,7 +34,7 @@ export const getPurposeFieldLabel = (purpose: CertificatePurpose): string | null
 };
 
 export const isLoanTypePurpose = (purpose: CertificatePurpose): boolean => {
-  return purpose === "Loan Application";
+  return purpose === "Loan Application (Motorcycle, E-Bike, Housing & Car)";
 };
 
 export const isPurposeFieldOptional = (purpose: CertificatePurpose): boolean => {

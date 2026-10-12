@@ -2,6 +2,7 @@ import React from "react";
 import {
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,6 +17,7 @@ interface SelectFieldProps {
   options: readonly string[];
   onChange: (value: string) => void;
   label?: string;
+  required?: boolean;
   error?: string;
   style?: ViewStyle;
 }
@@ -26,6 +28,7 @@ export const SelectField: React.FC<SelectFieldProps> = ({
   options,
   onChange,
   label,
+  required = false,
   error,
   style,
 }) => {
@@ -38,7 +41,12 @@ export const SelectField: React.FC<SelectFieldProps> = ({
 
   return (
     <>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label ? (
+        <Text style={styles.label}>
+          {label}
+          {required ? <Text style={styles.requiredMark}>*</Text> : null}
+        </Text>
+      ) : null}
       <Pressable
         style={[styles.container, error && styles.containerError, style]}
         onPress={() => setVisible(true)}
@@ -67,30 +75,32 @@ export const SelectField: React.FC<SelectFieldProps> = ({
                 <Feather name="x" size={20} color={COLORS.paragraph} />
               </Pressable>
             </View>
-            {options.map((option, index) => (
-              <Pressable
-                key={option}
-                style={[
-                  styles.option,
-                  index === 0 && styles.optionFirst,
-                  index === options.length - 1 && styles.optionLast,
-                  value === option && styles.optionSelected,
-                ]}
-                onPress={() => handleSelect(option)}
-              >
-                <Text
+            <ScrollView style={styles.optionsList}>
+              {options.map((option, index) => (
+                <Pressable
+                  key={option}
                   style={[
-                    styles.optionText,
-                    value === option && styles.optionTextSelected,
+                    styles.option,
+                    index === 0 && styles.optionFirst,
+                    index === options.length - 1 && styles.optionLast,
+                    value === option && styles.optionSelected,
                   ]}
+                  onPress={() => handleSelect(option)}
                 >
-                  {option}
-                </Text>
-                {value === option && (
-                  <Feather name="check" size={18} color={COLORS.primary} />
-                )}
-              </Pressable>
-            ))}
+                  <Text
+                    style={[
+                      styles.optionText,
+                      value === option && styles.optionTextSelected,
+                    ]}
+                  >
+                    {option}
+                  </Text>
+                  {value === option && (
+                    <Feather name="check" size={18} color={COLORS.primary} />
+                  )}
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
@@ -119,6 +129,9 @@ const styles = StyleSheet.create({
     color: COLORS.heading,
     marginBottom: SPACING.sm,
   },
+  requiredMark: {
+    color: COLORS.danger,
+  },
   value: {
     flex: 1,
     fontFamily: FONT_FAMILY.regular,
@@ -146,6 +159,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: "hidden",
     maxHeight: 400,
+  },
+  optionsList: {
+    flexShrink: 1,
   },
   modalHeader: {
     flexDirection: "row",

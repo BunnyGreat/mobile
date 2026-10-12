@@ -35,6 +35,8 @@ export const getCertificateTypeLabel = (type: CertificateType): string => {
       return "Certificate of Residency";
     case "Barangay Certification":
       return "Barangay Certification";
+    case "Business Permit":
+      return "Business Permit";
     default:
       return "Certificate";
   }

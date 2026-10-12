@@ -11,7 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Feather } from "@expo/vector-icons";
-import { AppButton, AppInput } from "../../../components";
+import { AppButton } from "../../../components";
 import { useProfileStore } from "../../../features/profile/store/profile.store";
 import { useCertificateRequest } from "../hooks/useCertificateRequest";
 import { CLEARANCE_PURPOSES } from "../constants/clearancePurposes";
@@ -128,16 +128,9 @@ const BarangayClearanceScreen = () => {
             })}
           </View>
 
-          <AppInput
-            label="Custom Purpose"
-            value={purpose}
-            onChangeText={setPurpose}
-            multiline
-            placeholder="Enter the purpose of this request..."
-            error={errors.purpose}
-            containerStyle={{ marginBottom: 0 }}
-            inputStyle={styles.purposeInput}
-          />
+          {errors.purpose ? (
+            <Text style={styles.purposeError}>{errors.purpose}</Text>
+          ) : null}
         </CertificateSection>
 
         <RequiredDocuments />
@@ -240,8 +233,12 @@ const styles = StyleSheet.create({
     fontFamily: FONT_FAMILY.medium,
     color: COLORS.white,
   },
-  purposeInput: {
-    textAlignVertical: "top",
+  purposeError: {
+    marginTop: -SPACING.md,
+    marginBottom: SPACING.md,
+    fontFamily: FONT_FAMILY.regular,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.danger,
   },
   submitSection: {
     marginTop: SPACING.xl,

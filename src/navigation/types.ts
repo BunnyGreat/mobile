@@ -1,5 +1,6 @@
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { FilterType } from "../features/status/types/status.types";
+import type { BusinessApplicationType } from "../features/request-certificate/types/businessPermit.types";
 
 export type MainTabParamList = {
   Home: undefined;
@@ -26,6 +27,7 @@ export type RootStackParamList = {
   EditProfile: undefined;
   ChangePasswordScreen: undefined;
   RequestCertificateScreen: undefined;
+  BusinessPermit: { applicationType: BusinessApplicationType };
   BarangayClearance: undefined;
   BarangayCertification: undefined;
   CertificateOfIndigency: { mode?: "self" | "relative" } | undefined;

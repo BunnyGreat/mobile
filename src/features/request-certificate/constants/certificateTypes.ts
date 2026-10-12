@@ -20,6 +20,12 @@ export const CERTIFICATE_TYPES: CertificateTypeItem[] = [
     disabled: false,
   },
   {
+    id: "business-permit",
+    title: "Business Permit",
+    description: "Apply for a new or renewed business permit.",
+    disabled: false,
+  },
+  {
     id: "more-soon",
     title: "More Soon",
     description: "More certificates coming soon.",

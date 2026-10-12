@@ -1,7 +1,6 @@
 import React from "react";
 import {
   Alert,
-  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -13,10 +12,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import type { ComponentProps } from "react";
 import { useCertificateRequest } from "../hooks/useCertificateRequest";
 import type { RootStackParamList } from "../../../navigation/types";
 import type { CertificateTypeItem } from "../types/certificate.types";
+import { BUSINESS_APPLICATION_TYPES } from "../constants/businessPermitTypes";
 import {
   COLORS,
   FONT_FAMILY,
@@ -24,27 +25,33 @@ import {
   SPACING,
 } from "../../../theme";
 
-const getCertificateIcon = (id: string) => {
+const getCertificateIcon = (
+  id: string,
+): ComponentProps<typeof Ionicons>["name"] => {
   switch (id) {
     case "barangay-clearance":
-      return require("../../../../assets/icons/shield-check.png");
+      return "shield-checkmark-outline";
     case "certificate-of-indigency":
-      return require("../../../../assets/icons/docs.png");
+      return "hand-left-outline";
     case "barangay-certification":
-      return require("../../../../assets/icons/docs.png");
+      return "document-text-outline";
     case "certificate-of-cohabitation":
-      return require("../../../../assets/icons/location.png");
+      return "location-outline";
     case "business-clearance":
-      return require("../../../../assets/icons/shield-check.png");
+      return "shield-checkmark-outline";
+    case "business-permit":
+      return "storefront-outline";
     case "special-barangay-clearance":
-      return require("../../../../assets/icons/docs.png");
+      return "document-text-outline";
     default:
-      return require("../../../../assets/icons/docs.png");
+      return "document-text-outline";
   }
 };
 
 const RequestCertificateScreen = () => {
   const [indigencyModalVisible, setIndigencyModalVisible] = React.useState(false);
+  const [businessPermitModalVisible, setBusinessPermitModalVisible] =
+    React.useState(false);
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { certificateTypes, selectCertificateType } = useCertificateRequest();
@@ -64,6 +71,8 @@ const RequestCertificateScreen = () => {
               navigation.navigate("BarangayCertification");
             } else if (item.id === "certificate-of-indigency") {
               setIndigencyModalVisible(true);
+            } else if (item.id === "business-permit") {
+              setBusinessPermitModalVisible(true);
             }
           }
         }}
@@ -77,10 +86,10 @@ const RequestCertificateScreen = () => {
         >
           <View style={styles.cardContent}>
             <View style={styles.iconContainer}>
-              <Image
-                source={getCertificateIcon(item.id)}
-                style={styles.icon}
-                resizeMode="contain"
+              <Ionicons
+                name={getCertificateIcon(item.id)}
+                size={24}
+                color={COLORS.primary}
               />
             </View>
 
@@ -235,6 +244,77 @@ const RequestCertificateScreen = () => {
           </View>
         </View>
       </Modal>
+      <Modal
+        visible={businessPermitModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setBusinessPermitModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close Business Permit options"
+            style={styles.modalBackdrop}
+            onPress={() => setBusinessPermitModalVisible(false)}
+          />
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalTitleGroup}>
+                <Text style={styles.modalTitle}>Business Permit</Text>
+                <Text style={styles.modalDescription}>
+                  Select New Application or Renewal.
+                </Text>
+              </View>
+              <TouchableOpacity
+                accessibilityRole="button"
+                accessibilityLabel="Close"
+                onPress={() => setBusinessPermitModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <Feather name="x" size={20} color={COLORS.paragraph} />
+              </TouchableOpacity>
+            </View>
+            {BUSINESS_APPLICATION_TYPES.map((applicationType) => {
+              const isNew = applicationType === "New";
+              return (
+                <TouchableOpacity
+                  key={applicationType}
+                  accessibilityRole="button"
+                  activeOpacity={0.75}
+                  style={styles.choiceCard}
+                  onPress={() => {
+                    setBusinessPermitModalVisible(false);
+                    navigation.navigate("BusinessPermit", { applicationType });
+                  }}
+                >
+                  <View style={styles.choiceIcon}>
+                    <Feather
+                      name={isNew ? "file-plus" : "refresh-cw"}
+                      size={20}
+                      color={COLORS.primary}
+                    />
+                  </View>
+                  <View style={styles.choiceTextGroup}>
+                    <Text style={styles.choiceTitle}>
+                      {isNew ? "New Application" : "Renewal"}
+                    </Text>
+                    <Text style={styles.choiceDescription}>
+                      {isNew
+                        ? "Apply for a business permit for the first time."
+                        : "Renew an existing business permit."}
+                    </Text>
+                  </View>
+                  <Feather
+                    name="chevron-right"
+                    size={20}
+                    color={COLORS.placeholder}
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -323,10 +403,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: SPACING.sm,
-  },
-  icon: {
-    width: 24,
-    height: 24,
   },
   textGroup: {
     flex: 1,

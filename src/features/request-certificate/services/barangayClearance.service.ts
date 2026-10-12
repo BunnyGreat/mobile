@@ -2,11 +2,20 @@ import { auth, db } from "../../../services/firebase/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import type { Profile } from "../../profile/types/profile.types";
 import { generateReferenceNumber } from "../utils/generateReferenceNumber";
+import { CLEARANCE_PURPOSES } from "../constants/clearancePurposes";
+import { INDIGENCY_PURPOSES } from "../constants/indigencyPurposes";
+import { validateBusinessPermit } from "./businessPermitValidation.service";
+import { buildBusinessPermitPayload } from "../utils/buildBusinessPermitPayload";
+import type {
+  BusinessPermitFormValues,
+  BusinessPermitRequestFor,
+} from "../types/businessPermit.types";
 
 export type CertificateRequestType =
   | "Barangay Clearance"
   | "Barangay Certification"
-  | "Certificate of Indigency";
+  | "Certificate of Indigency"
+  | "Business Permit";
 
 export interface CertificateFamilyInformation {
   name: string;
@@ -22,7 +31,8 @@ export const submitCertificateRequest = async (
   certificateType: CertificateRequestType,
   purpose?: string,
   familyInformation?: CertificateFamilyInformation,
-  requestFor?: CertificateIndigencyRequestFor,
+  requestFor?: CertificateIndigencyRequestFor | BusinessPermitRequestFor,
+  businessInformation?: BusinessPermitFormValues,
 ): Promise<string> => {
   const currentUser = auth.currentUser;
 
@@ -36,7 +46,9 @@ export const submitCertificateRequest = async (
     );
   }
 
-  const requiresPurpose = certificateType !== "Barangay Certification";
+  const requiresPurpose =
+    certificateType === "Barangay Clearance" ||
+    certificateType === "Certificate of Indigency";
   const requestPurpose = requiresPurpose ? purpose?.trim() : undefined;
 
   if (requiresPurpose && !requestPurpose) {
@@ -44,8 +56,23 @@ export const submitCertificateRequest = async (
   }
 
   if (
+    certificateType === "Barangay Clearance" &&
+    !CLEARANCE_PURPOSES.some((option) => option === requestPurpose)
+  ) {
+    throw new Error("Select a valid Barangay Clearance purpose.");
+  }
+
+  if (
     certificateType === "Certificate of Indigency" &&
-    !requestFor
+    !INDIGENCY_PURPOSES.some((option) => option === requestPurpose)
+  ) {
+    throw new Error("Select a valid Certificate of Indigency purpose.");
+  }
+
+  if (
+    certificateType === "Certificate of Indigency" &&
+    requestFor !== "self" &&
+    requestFor !== "relative"
   ) {
     throw new Error("Specify whether the request is for yourself or a relative.");
   }
@@ -54,7 +81,13 @@ export const submitCertificateRequest = async (
     certificateType !== "Certificate of Indigency" &&
     (requestFor || familyInformation)
   ) {
-    throw new Error("Family information is only valid for indigency requests.");
+    if (
+      certificateType !== "Business Permit" ||
+      familyInformation ||
+      (requestFor !== "new" && requestFor !== "renew")
+    ) {
+      throw new Error("Invalid request-specific information.");
+    }
   }
 
   if (requestFor === "self" && familyInformation) {
@@ -63,6 +96,33 @@ export const submitCertificateRequest = async (
 
   if (requestFor === "relative" && !familyInformation) {
     throw new Error("Family information is required for a relative request.");
+  }
+
+  if (
+    certificateType === "Business Permit" &&
+    (!businessInformation ||
+      (requestFor !== "new" && requestFor !== "renew"))
+  ) {
+    throw new Error("Select an application type and complete the business information.");
+  }
+
+  if (
+    certificateType !== "Business Permit" &&
+    businessInformation
+  ) {
+    throw new Error("Business information is only valid for Business Permit requests.");
+  }
+
+  if (businessInformation) {
+    const businessSubmission =
+      buildBusinessPermitPayload(businessInformation);
+    if (businessSubmission.requestFor !== requestFor) {
+      throw new Error("The Business Permit application type is invalid.");
+    }
+
+    if (Object.keys(validateBusinessPermit(businessInformation)).length > 0) {
+      throw new Error("Complete all required Business Permit fields correctly.");
+    }
   }
 
   const requestFamilyInformation = familyInformation
@@ -86,6 +146,9 @@ export const submitCertificateRequest = async (
 
   const requestId = generateReferenceNumber();
   const now = new Date().toISOString();
+  const businessSubmission = businessInformation
+    ? buildBusinessPermitPayload(businessInformation)
+    : undefined;
 
   const requestRef = doc(db, "certificate_requests", requestId);
 
@@ -93,12 +156,11 @@ export const submitCertificateRequest = async (
     requestId,
     uid: currentUser.uid,
     certificateType,
-    ...(requiresPurpose
-      ? { purpose: requestPurpose }
-      : {}),
+    ...(requiresPurpose ? { purpose: requestPurpose } : {}),
     ...(certificateType === "Certificate of Indigency"
       ? { requestFor }
       : {}),
+    ...(businessSubmission ?? {}),
     ...(requestFamilyInformation
       ? { familyInformation: requestFamilyInformation }
       : {}),

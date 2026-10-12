@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { getCachedCertificateTypes } from "../services/certificateCache.service";
 import { useCertificateStore } from "../store/certificate.store";
 import { useProfileStore } from "../../profile/store/profile.store";
@@ -11,6 +11,12 @@ import {
 import { validateBarangayClearance } from "../services/certificateValidation.service";
 import type { CertificateTypeItem } from "../types/certificate.types";
 import type { CertificateStore } from "../store/certificate.store";
+import { INDIGENCY_PURPOSES } from "../constants/indigencyPurposes";
+import { validateBusinessPermit } from "../services/businessPermitValidation.service";
+import type {
+  BusinessPermitFormValues,
+  BusinessPermitRequestFor,
+} from "../types/businessPermit.types";
 
 export const useCertificateRequest = () => {
   const certificateTypes = useMemo(
@@ -35,6 +41,7 @@ export const useCertificateRequest = () => {
   const [purpose, setPurpose] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submissionInProgress = useRef(false);
 
   const selectCertificateType = useCallback(
     (type: CertificateTypeItem) => {
@@ -47,14 +54,39 @@ export const useCertificateRequest = () => {
   const validate = useCallback((
     certificateType: CertificateRequestType,
     familyInformation?: CertificateFamilyInformation,
-    requestFor?: CertificateIndigencyRequestFor,
+    requestFor?: CertificateIndigencyRequestFor | BusinessPermitRequestFor,
+    businessInformation?: BusinessPermitFormValues,
   ) => {
-    const validationErrors: Record<string, string> =
-      certificateType === "Barangay Clearance"
-        ? validateBarangayClearance({ purpose })
-        : certificateType === "Certificate of Indigency" && !purpose.trim()
-          ? { purpose: "Please select or enter a purpose for your request." }
-          : {};
+    const validationErrors: Record<string, string> = {};
+    if (certificateType === "Barangay Clearance") {
+      Object.assign(validationErrors, validateBarangayClearance({ purpose }));
+    } else if (
+      certificateType === "Certificate of Indigency" &&
+      !INDIGENCY_PURPOSES.some((option) => option === purpose)
+    ) {
+      validationErrors.purpose =
+        "Select a valid purpose for your Certificate of Indigency request.";
+    } else if (certificateType === "Business Permit") {
+      Object.assign(
+        validationErrors,
+        validateBusinessPermit(
+          businessInformation ?? {
+            businessName: "",
+            natureOfBusiness: "",
+            initialCapital: "",
+            businessAddress: "",
+            applicationType: "",
+            businessOwnerFullName: "",
+            homeAddress: "",
+            contactNumber: "",
+          },
+        ),
+      );
+      if (requestFor !== "new" && requestFor !== "renew") {
+        validationErrors.applicationType =
+          "Select New Application or Renewal.";
+      }
+    }
 
     if (certificateType === "Certificate of Indigency" && familyInformation) {
       if (!familyInformation.name.trim()) {
@@ -73,7 +105,11 @@ export const useCertificateRequest = () => {
       validationErrors.requestFor = "Select who the certificate is for.";
     }
 
-    if (requestFor === "relative" && !familyInformation) {
+    if (
+      certificateType === "Certificate of Indigency" &&
+      requestFor === "relative" &&
+      !familyInformation
+    ) {
       validationErrors.familyName =
         "Complete the family information for this request.";
     }
@@ -96,8 +132,10 @@ export const useCertificateRequest = () => {
           profile.personalInformation.firstName,
           profile.personalInformation.lastName,
           fullAddress,
-          profile.personalInformation.dateOfBirth,
           profile.personalInformation.contactNumber,
+          ...(certificateType === "Business Permit"
+            ? []
+            : [profile.personalInformation.dateOfBirth]),
         ];
         if (residentInformation.some((value) => !value?.trim())) {
           validationErrors.profile =
@@ -113,8 +151,11 @@ export const useCertificateRequest = () => {
   const submitRequest = useCallback(async (
     certificateType: CertificateRequestType = "Barangay Clearance",
     familyInformation?: CertificateFamilyInformation,
-    requestFor?: CertificateIndigencyRequestFor,
+    requestFor?: CertificateIndigencyRequestFor | BusinessPermitRequestFor,
+    businessInformation?: BusinessPermitFormValues,
   ) => {
+    if (submissionInProgress.current) return null;
+
     if (!profile) {
       setErrors({
         [certificateType === "Barangay Clearance" ? "purpose" : "profile"]:
@@ -123,19 +164,31 @@ export const useCertificateRequest = () => {
       return null;
     }
 
-    if (!validate(certificateType, familyInformation, requestFor)) {
+    if (
+      !validate(
+        certificateType,
+        familyInformation,
+        requestFor,
+        businessInformation,
+      )
+    ) {
       return null;
     }
 
+    submissionInProgress.current = true;
     setIsSubmitting(true);
 
     try {
       const requestId = await submitCertificateRequest(
         profile,
         certificateType,
-        certificateType !== "Barangay Certification" ? purpose : undefined,
+        certificateType === "Barangay Clearance" ||
+          certificateType === "Certificate of Indigency"
+          ? purpose
+          : undefined,
         familyInformation,
         requestFor,
+        businessInformation,
       );
       return requestId;
     } catch (error: unknown) {
@@ -149,6 +202,7 @@ export const useCertificateRequest = () => {
       });
       return null;
     } finally {
+      submissionInProgress.current = false;
       setIsSubmitting(false);
     }
   }, [profile, purpose, validate]);

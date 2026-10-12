@@ -1,4 +1,6 @@
 export const CLEARANCE_PURPOSES = [
+  "Loan Application (Motorcycle, E-Bike, Housing & Car)",
+  "LTOPF Requirement",
   "Electrical Application",
   "Police Clearance Application",
   "Postal ID Application",
@@ -12,8 +14,6 @@ export const CLEARANCE_PURPOSES = [
   "Private Body Number (Application/Renewal)",
   "Residency",
   "TESDA / School / OJT Requirement",
-  "Loan Application",
-  "LTOPF Requirement",
 ] as const;
 
 export type ClearancePurpose = typeof CLEARANCE_PURPOSES[number];

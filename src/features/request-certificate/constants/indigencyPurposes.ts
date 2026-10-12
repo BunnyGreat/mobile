@@ -1,7 +1,11 @@
 export const INDIGENCY_PURPOSES = [
-  "MEDICAL ASSISTANCE",
-  "EDUCATIONAL ASSISTANCE",
-  "SCHOLARSHIP",
-  "SOCIAL WELFARE ASSISTANCE",
-  "FINANCIAL ASSISTANCE",
+  "Billing Assistance",
+  "Educational Assistance",
+  "Financial Assistance",
+  "Late Registration",
+  "Legal Assistance",
+  "Medical Assistance",
+  "Scholarship Program",
+  "School Requirement",
+  "Sponsorship Program",
 ] as const;

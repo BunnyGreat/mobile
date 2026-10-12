@@ -63,10 +63,6 @@ const CertificateOfIndigencyScreen: React.FC = () => {
   const address = profile
     ? `${profile.residenceInformation.houseNumber} ${profile.residenceInformation.street}, ${profile.residenceInformation.purok}, ${profile.residenceInformation.barangay}, ${profile.residenceInformation.municipality}, ${profile.residenceInformation.province}`
     : "";
-  const customPurposeSelected = !INDIGENCY_PURPOSES.some(
-    (purposeOption) => purposeOption === purpose,
-  );
-
   const handleSubmit = async () => {
     const familyInformation: CertificateFamilyInformation | undefined =
       isRelativeRequest
@@ -201,14 +197,9 @@ const CertificateOfIndigencyScreen: React.FC = () => {
                   );
                 })}
               </View>
-              <AppInput
-                label="Custom Purpose"
-                value={customPurposeSelected ? purpose : ""}
-                onChangeText={setPurpose}
-                placeholder="Enter a custom purpose..."
-                error={errors.purpose}
-                containerStyle={{ marginBottom: 0 }}
-              />
+              {errors.purpose ? (
+                <Text style={styles.purposeError}>{errors.purpose}</Text>
+              ) : null}
             </View>
             <AppInput
               label="Where it will be used"
@@ -253,14 +244,9 @@ const CertificateOfIndigencyScreen: React.FC = () => {
               })}
             </View>
 
-            <AppInput
-              label="Custom Purpose"
-              value={customPurposeSelected ? purpose : ""}
-              onChangeText={setPurpose}
-              placeholder="Enter a custom purpose..."
-              error={errors.purpose}
-              containerStyle={{ marginBottom: 0 }}
-            />
+            {errors.purpose ? (
+              <Text style={styles.purposeError}>{errors.purpose}</Text>
+            ) : null}
           </CertificateSection>
         )}
 
@@ -350,6 +336,12 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     fontFamily: FONT_FAMILY.medium,
     color: COLORS.white,
+  },
+  purposeError: {
+    marginTop: -SPACING.md,
+    fontFamily: FONT_FAMILY.regular,
+    fontSize: FONT_SIZE.body12,
+    color: COLORS.danger,
   },
   submitSection: {
     marginTop: SPACING.xl,

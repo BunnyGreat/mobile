@@ -23,6 +23,7 @@ import RequestCertificateScreen from "../features/request-certificate/screens/Re
 import BarangayClearanceScreen from "../features/request-certificate/screens/BarangayClearanceScreen";
 import BarangayCertificationScreen from "../features/request-certificate/screens/BarangayCertificationScreen";
 import CertificateOfIndigencyScreen from "../features/request-certificate/screens/CertificateOfIndigencyScreen";
+import BusinessPermitScreen from "../features/request-certificate/screens/BusinessPermitScreen";
 import { RootStackParamList } from "./types";
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -68,6 +69,10 @@ export const RootNavigator: React.FC = () => {
       <Stack.Screen
         name="RequestCertificateScreen"
         component={RequestCertificateScreen}
+      />
+      <Stack.Screen
+        name="BusinessPermit"
+        component={BusinessPermitScreen}
       />
       <Stack.Screen
         name="BarangayClearance"
