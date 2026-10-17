@@ -10,7 +10,8 @@ const root = join(__dirname, "..", "..", "..");
 const authRoot = join(root, "src", "services", "firebase");
 const unavailableCode = "PLAY_SERVICES_NOT_AVAILABLE";
 const testNonce = "N".repeat(43);
-const workerOrigin =
+const workerOrigin = "https://auth.barangay-san-isidro.help";
+const legacyWorkerOrigin =
   "https://barangay-google-oauth.nadurajohnlloyd8.workers.dev";
 const originalFetch = global.fetch;
 const originalSetTimeout = global.setTimeout;
@@ -173,7 +174,10 @@ test("opens the browser session after the broker returns a valid authorization U
           code_challenge: "C".repeat(43),
           code_challenge_method: "S256",
         }),
-    }), { status: 200 });
+    }), {
+      status: 200,
+      headers: { "x-request-id": "worker-request-id" },
+    });
   };
 
   await assert.rejects(fallback(), (error) =>
@@ -181,6 +185,9 @@ test("opens the browser session after the broker returns a valid authorization U
     error.code === "google_sign_in_cancelled",
   );
   assert.equal(browserOpenCount, 1);
+  assert.ok(diagnosticLogs.some((entry) =>
+    entry.includes('"requestId":"worker-request-id"'),
+  ));
   assert.deepEqual(requestBodies.map((body) => Object.keys(body)), [
     ["appChallenge"],
   ]);
@@ -371,7 +378,7 @@ test("browser timeout dismisses the auth session and reports a retryable error",
   assert.equal(dismissCount, 1);
 });
 
-test("shows a clear service-unavailable error when the broker cannot be reached", async () => {
+test("attributes a network failure to connectivity and allows retry", async () => {
   global.fetch = async () => {
     throw new TypeError("Network request failed");
   };
@@ -379,7 +386,43 @@ test("shows a clear service-unavailable error when the broker cannot be reached"
   await assert.rejects(fallback(), (error) =>
     error instanceof GoogleAuthenticationError &&
     error.code === "google_oauth_start_failed" &&
-    /service is temporarily unavailable/i.test(error.message),
+    /check your internet connection/i.test(error.message),
+  );
+  assert.equal(browserOpenCount, 0);
+});
+
+test("reports broker configuration errors without blaming the network", async () => {
+  global.fetch = async () => new Response(
+    JSON.stringify({ error: "oauth_configuration_error" }),
+    {
+      status: 503,
+      headers: { "x-request-id": "safe-test-request-id" },
+    },
+  );
+
+  await assert.rejects(fallback(), (error) =>
+    error instanceof GoogleAuthenticationError &&
+    error.code === "google_oauth_not_configured" &&
+    /not configured correctly/i.test(error.message) &&
+    !/internet|connection/i.test(error.message),
+  );
+  assert.ok(diagnosticLogs.some((entry) =>
+    entry.includes('"requestId":"safe-test-request-id"'),
+  ));
+  assert.equal(browserOpenCount, 0);
+});
+
+test("reports broker storage failures as temporary service errors", async () => {
+  global.fetch = async () => new Response(
+    JSON.stringify({ error: "storage_unavailable" }),
+    { status: 503 },
+  );
+
+  await assert.rejects(fallback(), (error) =>
+    error instanceof GoogleAuthenticationError &&
+    error.code === "google_oauth_start_failed" &&
+    /service is temporarily unavailable/i.test(error.message) &&
+    !/internet|connection/i.test(error.message),
   );
   assert.equal(browserOpenCount, 0);
 });
@@ -391,6 +434,49 @@ test("rejects a missing broker URL without opening a browser session", async () 
     error instanceof GoogleAuthenticationError &&
     error.code === "google_oauth_not_configured" &&
     /not configured/i.test(error.message),
+  );
+  assert.equal(browserOpenCount, 0);
+});
+
+test("accepts the custom domain and retains the legacy Worker hostname", async () => {
+  for (const origin of [workerOrigin, legacyWorkerOrigin]) {
+    process.env.EXPO_PUBLIC_GOOGLE_OAUTH_BROKER_URL = origin;
+    global.fetch = async (url) => {
+      assert.equal(String(url), `${origin}/oauth/start`);
+      return new Response(JSON.stringify({
+        authorizationUrl:
+          "https://accounts.google.com/o/oauth2/v2/auth?" +
+          new URLSearchParams({
+            client_id: "web-client-id",
+            redirect_uri: `${origin}/oauth/callback`,
+            response_type: "code",
+            scope: "openid email profile",
+            response_mode: "form_post",
+            state: "A".repeat(43),
+            nonce: "b".repeat(64),
+            code_challenge: "C".repeat(43),
+            code_challenge_method: "S256",
+          }),
+      }), { status: 200 });
+    };
+    await assert.rejects(fallback(), (error) =>
+      error instanceof GoogleAuthenticationError &&
+      error.code === "google_sign_in_cancelled",
+    );
+  }
+  assert.equal(browserOpenCount, 2);
+});
+
+test("rejects unapproved lookalike broker hostnames", async () => {
+  process.env.EXPO_PUBLIC_GOOGLE_OAUTH_BROKER_URL =
+    "https://auth.barangay-san-isidro.help.attacker.example";
+  global.fetch = async () => {
+    throw new Error("the broker must not be contacted");
+  };
+
+  await assert.rejects(fallback(), (error) =>
+    error instanceof GoogleAuthenticationError &&
+    error.code === "google_oauth_not_configured",
   );
   assert.equal(browserOpenCount, 0);
 });

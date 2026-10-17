@@ -7,6 +7,10 @@ const APP_REDIRECT_URI = "barangay://oauth/google";
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 const GOOGLE_NONCE_HASH_PATTERN = /^[a-f0-9]{64}$/;
 const BROWSER_AUTH_TIMEOUT_MS = 2 * 60 * 1000;
+const ALLOWED_BROKER_HOSTS = new Set([
+  "auth.barangay-san-isidro.help",
+  "barangay-google-oauth.nadurajohnlloyd8.workers.dev",
+]);
 
 type StartResponse = {
   authorizationUrl?: unknown;
@@ -22,10 +26,17 @@ const logOAuthDiagnostic = (
   status: number | null,
   category: string,
   fieldsPresent: Record<string, boolean>,
+  requestId?: string,
 ): void => {
   console.info(
     "[GOOGLE OAUTH]",
-    JSON.stringify({ stage, status, category, fieldsPresent }),
+    JSON.stringify({
+      stage,
+      status,
+      category,
+      fieldsPresent,
+      ...(requestId ? { requestId } : {}),
+    }),
   );
 };
 
@@ -43,6 +54,7 @@ class BrokerRequestError extends Error {
   constructor(
     readonly status: number | null,
     readonly category: string,
+    readonly requestId?: string,
   ) {
     super(category);
   }
@@ -52,6 +64,10 @@ const brokerErrorCodes = new Set([
   "invalid_request",
   "method_not_allowed",
   "not_found",
+  "oauth_configuration_error",
+  "encryption_configuration_error",
+  "encryption_unavailable",
+  "storage_unavailable",
   "rate_limited",
   "service_unavailable",
   "ticket_expired_or_used",
@@ -125,7 +141,7 @@ const getBrokerBaseUrl = (): string => {
   }
   if (
     url.protocol !== "https:" ||
-    !url.hostname.endsWith(".workers.dev") ||
+    !ALLOWED_BROKER_HOSTS.has(url.hostname) ||
     url.username ||
     url.password ||
     url.port ||
@@ -171,6 +187,7 @@ const postJson = async <T>(
       logOAuthDiagnostic(stage, null, "network_error", requestFieldsPresent);
       throw new BrokerRequestError(null, "network_error");
     }
+    const requestId = response.headers.get("x-request-id") ?? undefined;
 
     let data: Record<string, unknown> | null = null;
     try {
@@ -184,7 +201,7 @@ const postJson = async <T>(
         ...Object.fromEntries(
           responseFields.map((key) => [key, false]),
         ),
-      });
+      }, requestId);
       throw new BrokerRequestError(response.status, "invalid_json");
     }
 
@@ -202,10 +219,16 @@ const postJson = async <T>(
           brokerErrorCodes.has(data.error)
         ? data.error
         : "http_error";
-      logOAuthDiagnostic(stage, response.status, error, fieldsPresent);
-      throw new BrokerRequestError(response.status, error);
+      logOAuthDiagnostic(stage, response.status, error, fieldsPresent, requestId);
+      throw new BrokerRequestError(response.status, error, requestId);
     }
-    logOAuthDiagnostic(stage, response.status, "success", fieldsPresent);
+    logOAuthDiagnostic(
+      stage,
+      response.status,
+      "success",
+      fieldsPresent,
+      requestId,
+    );
     return (data ?? {}) as T;
   } finally {
     clearTimeout(timeout);
@@ -226,9 +249,24 @@ const getBrokerFailure = (
         "Too many Google sign-in attempts. Please wait and try again.",
       );
     }
+    if (
+      category === "oauth_configuration_error" ||
+      category === "encryption_configuration_error"
+    ) {
+      return new GoogleAuthenticationError(
+        "google_oauth_not_configured",
+        "Google Sign-In is not configured correctly. Please contact support or try another sign-in method.",
+      );
+    }
+    if (category === "network_error" || category === "request_failed") {
+      return new GoogleAuthenticationError(
+        "google_oauth_start_failed",
+        "Unable to reach the Google Sign-In service. Check your internet connection and try again.",
+      );
+    }
     return new GoogleAuthenticationError(
       "google_oauth_start_failed",
-      "Google Sign-In service is temporarily unavailable. Check your connection and try again.",
+      "Google Sign-In service is temporarily unavailable. Please try again later.",
     );
   }
   if (category === "ticket_expired_or_used") {
@@ -409,7 +447,7 @@ export const signInWithGoogleBrowserFallback = async (): Promise<GoogleBrowserSi
     });
     throw new GoogleAuthenticationError(
       "google_oauth_start_failed",
-      "Google Sign-In service is temporarily unavailable. Check your connection and try again.",
+      "Google Sign-In service returned an invalid response. Please try again later.",
     );
   }
 

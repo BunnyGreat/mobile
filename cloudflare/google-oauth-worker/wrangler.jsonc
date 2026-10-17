@@ -1,21 +1,32 @@
 {
-  "$schema": "https://unpkg.com/wrangler@4.149.0/config-schema.json",
-  "name": "barangay-google-oauth",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-10-10",
-  "workers_dev": true,
-  "observability": {
-    "enabled": false,
-    "logs": {
-      "invocation_logs": false
-    }
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "barangay-google-oauth",
-      "database_id": "78904003-8566-4a4a-b813-ec31c581b938",
-      "migrations_dir": "migrations"
-    }
-  ]
+	"$schema": "https://unpkg.com/wrangler@4.149.0/config-schema.json",
+	"name": "barangay-google-oauth",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-10-10",
+	"workers_dev": true,
+	"preview_urls": true,
+	"observability": {
+		"enabled": true,
+		"logs": {
+			"enabled": true,
+			"invocation_logs": false
+		}
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "barangay-google-oauth",
+			"database_id": "78904003-8566-4a4a-b813-ec31c581b938",
+			"migrations_dir": "migrations"
+		}
+	],
+	"routes": [
+		{
+			"pattern": "auth.barangay-san-isidro.help",
+			"zone_name": "barangay-san-isidro.help",
+			"custom_domain": true,
+			"enabled": true,
+			"previews_enabled": false
+		}
+	]
 }

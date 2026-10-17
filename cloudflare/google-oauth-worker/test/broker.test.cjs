@@ -114,7 +114,7 @@ const env = {
   GOOGLE_OAUTH_CLIENT_ID: CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET: "test-only-secret",
   OAUTH_DATA_ENCRYPTION_KEY: ENCRYPTION_KEY,
-  OAUTH_PUBLIC_BASE_URL: "https://test-account.workers.dev",
+  OAUTH_PUBLIC_BASE_URL: "https://auth.barangay-san-isidro.help",
 };
 
 const workerModule = new Module(workerPath, module);
@@ -143,7 +143,8 @@ beforeEach(() => {
       if (
         form.get("client_id") !== CLIENT_ID ||
         form.get("client_secret") !== env.GOOGLE_OAUTH_CLIENT_SECRET ||
-        form.get("redirect_uri") !== `${env.OAUTH_PUBLIC_BASE_URL}/oauth/callback` ||
+        form.get("redirect_uri") !==
+          currentAuthorizationUrl.searchParams.get("redirect_uri") ||
         createHash("sha256").update(form.get("code_verifier") ?? "").digest("base64url") !==
           currentAuthorizationUrl.searchParams.get("code_challenge")
       ) {
@@ -178,25 +179,38 @@ after(() => {
 
 let currentAuthorizationUrl;
 
-const post = (path, body) => worker.fetch(
-  new Request(`https://test-account.workers.dev${path}`, {
+const post = (
+  path,
+  body,
+  origin = env.OAUTH_PUBLIC_BASE_URL,
+  workerEnv = env,
+) => worker.fetch(
+  new Request(`${origin}${path}`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   }),
-  env,
+  workerEnv,
 );
 
-const begin = async () => {
-  const response = await post("/oauth/start", { appChallenge: testAppChallenge });
+const begin = async (origin = env.OAUTH_PUBLIC_BASE_URL) => {
+  const response = await post(
+    "/oauth/start",
+    { appChallenge: testAppChallenge },
+    origin,
+  );
   assert.equal(response.status, 200);
   const data = await response.json();
   currentAuthorizationUrl = new URL(data.authorizationUrl);
   return currentAuthorizationUrl;
 };
 
-const callback = (fields, workerEnv = env) => worker.fetch(
-  new Request("https://test-account.workers.dev/oauth/callback", {
+const callback = (
+  fields,
+  workerEnv = env,
+  origin = workerEnv.OAUTH_PUBLIC_BASE_URL,
+) => worker.fetch(
+  new Request(`${origin}/oauth/callback`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams(fields),
@@ -259,6 +273,110 @@ test("OAuth start returns minimal scopes, PKCE, state, and nonce", async () => {
   assert.ok(attempts.payload_ciphertext);
 });
 
+test("OAuth start returns a safe request ID", async () => {
+  const response = await post("/oauth/start", { appChallenge: testAppChallenge });
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("x-request-id"), /^[0-9a-f-]{36}$/i);
+  assert.equal(
+    response.headers.get("access-control-expose-headers"),
+    "X-Request-ID",
+  );
+});
+
+test("OAuth start reports missing credentials as configuration failure", async () => {
+  const entries = await captureLogs(() => post(
+    "/oauth/start",
+    { appChallenge: testAppChallenge },
+    env.OAUTH_PUBLIC_BASE_URL,
+    { ...env, GOOGLE_OAUTH_CLIENT_SECRET: undefined },
+  ));
+  assert.equal(entries.result.status, 503);
+  assert.deepEqual(await entries.result.json(), {
+    error: "oauth_configuration_error",
+  });
+  const requestId = entries.result.headers.get("x-request-id");
+  assert.match(requestId, /^[0-9a-f-]{36}$/i);
+  assert.match(entries.logs, /"category":"oauth_configuration_error"/);
+  assert.ok(entries.logs.includes(requestId));
+  assert.doesNotMatch(entries.logs, /test-only-secret|client_secret/);
+});
+
+test("OAuth start reports invalid public URL as configuration failure", async () => {
+  const response = await post(
+    "/oauth/start",
+    { appChallenge: testAppChallenge },
+    env.OAUTH_PUBLIC_BASE_URL,
+    {
+      ...env,
+      OAUTH_PUBLIC_BASE_URL: "https://auth.barangay-san-isidro.help.attacker.example",
+    },
+  );
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    error: "oauth_configuration_error",
+  });
+});
+
+test("OAuth start distinguishes missing encryption configuration", async () => {
+  const response = await post(
+    "/oauth/start",
+    { appChallenge: testAppChallenge },
+    env.OAUTH_PUBLIC_BASE_URL,
+    { ...env, OAUTH_DATA_ENCRYPTION_KEY: undefined },
+  );
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), {
+    error: "encryption_configuration_error",
+  });
+});
+
+test("OAuth start classifies D1 failures without logging exception details", async () => {
+  const brokenDatabase = {
+    prepare: (...args) => d1.prepare(...args),
+    batch: async () => {
+      throw new Error("sensitive database detail");
+    },
+  };
+  const entries = await captureLogs(() => post(
+    "/oauth/start",
+    { appChallenge: testAppChallenge },
+    env.OAUTH_PUBLIC_BASE_URL,
+    { ...env, DB: brokenDatabase },
+  ));
+  assert.equal(entries.result.status, 503);
+  assert.deepEqual(await entries.result.json(), {
+    error: "storage_unavailable",
+  });
+  assert.match(entries.logs, /"stage":"start_rate_limit"/);
+  assert.match(entries.logs, /"category":"storage_unavailable"/);
+  assert.ok(entries.logs.includes(entries.result.headers.get("x-request-id")));
+  assert.doesNotMatch(entries.logs, /sensitive database detail/);
+});
+
+test("OAuth start distinguishes an unavailable attempt store", async () => {
+  const brokenDatabase = {
+    prepare(query) {
+      if (/INSERT INTO oauth_attempts/.test(query)) {
+        throw new Error("sensitive database detail");
+      }
+      return d1.prepare(query);
+    },
+    batch: (...args) => d1.batch(...args),
+  };
+  const entries = await captureLogs(() => post(
+    "/oauth/start",
+    { appChallenge: testAppChallenge },
+    env.OAUTH_PUBLIC_BASE_URL,
+    { ...env, DB: brokenDatabase },
+  ));
+  assert.equal(entries.result.status, 503);
+  assert.deepEqual(await entries.result.json(), {
+    error: "storage_unavailable",
+  });
+  assert.match(entries.logs, /"stage":"start_attempt_storage"/);
+  assert.doesNotMatch(entries.logs, /sensitive database detail/);
+});
+
 test("state mismatch never exchanges an authorization code", async () => {
   const authorization = await begin();
   const response = await callback({
@@ -272,7 +390,7 @@ test("state mismatch never exchanges an authorization code", async () => {
 
 test("callback form parsing failures identify the callback stage without request data", async () => {
   const entries = await captureLogs(() => worker.fetch(
-    new Request("https://test-account.workers.dev/oauth/callback", {
+    new Request(`${env.OAUTH_PUBLIC_BASE_URL}/oauth/callback`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ state: "sensitive-state", code: "sensitive-code" }),
@@ -492,7 +610,7 @@ test("malformed callbacks, including duplicate state, are rejected", async () =>
   const authorization = await begin();
   const state = authorization.searchParams.get("state");
   const response = await worker.fetch(
-    new Request("https://test-account.workers.dev/oauth/callback", {
+    new Request(`${env.OAUTH_PUBLIC_BASE_URL}/oauth/callback`, {
       method: "POST",
       headers: { "content-type": "application/x-www-form-urlencoded" },
       body: `state=${state}&state=${state}&code=authorization-code`,
@@ -500,6 +618,77 @@ test("malformed callbacks, including duplicate state, are rejected", async () =>
     env,
   );
   assert.equal(new URL(response.headers.get("Location")).searchParams.get("error"), "callback_invalid");
+});
+
+test("keeps custom and legacy broker origins paired with their own callback URIs", async () => {
+  env.OAUTH_PUBLIC_BASE_URL = "https://auth.barangay-san-isidro.help";
+  for (const origin of [
+    "https://auth.barangay-san-isidro.help",
+    "https://barangay-google-oauth.nadurajohnlloyd8.workers.dev",
+  ]) {
+    const authorization = await begin(origin);
+    assert.equal(
+      authorization.searchParams.get("redirect_uri"),
+      `${origin}/oauth/callback`,
+    );
+    const response = await callback({
+      code: "authorization-code",
+      state: authorization.searchParams.get("state"),
+    }, env, origin);
+    assert.equal(response.status, 302);
+    assert.equal(
+      new URL(response.headers.get("Location")).searchParams.has("ticket"),
+      true,
+    );
+  }
+  env.OAUTH_PUBLIC_BASE_URL = "https://auth.barangay-san-isidro.help";
+});
+
+test("rejects callback requests on unapproved hosts without consuming the OAuth attempt", async () => {
+  env.OAUTH_PUBLIC_BASE_URL = "https://auth.barangay-san-isidro.help";
+  const authorization = await begin();
+  const fields = {
+    code: "authorization-code",
+    state: authorization.searchParams.get("state"),
+  };
+  const rejected = await callback(
+    fields,
+    env,
+    "https://auth.barangay-san-isidro.help.attacker.example",
+  );
+  assert.equal(
+    new URL(rejected.headers.get("Location")).searchParams.get("error"),
+    "callback_failed",
+  );
+
+  const accepted = await callback(fields);
+  assert.equal(
+    new URL(accepted.headers.get("Location")).searchParams.has("ticket"),
+    true,
+  );
+});
+
+test("rejects unapproved public callback hostnames", async () => {
+  const original = env.OAUTH_PUBLIC_BASE_URL;
+  try {
+    const response = await post(
+      "/oauth/start",
+      { appChallenge: testAppChallenge },
+      "https://auth.barangay-san-isidro.help.attacker.example",
+    );
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), {
+      error: "oauth_configuration_error",
+    });
+    env.OAUTH_PUBLIC_BASE_URL =
+      "https://auth.barangay-san-isidro.help.attacker.example";
+    const invalidConfiguration = await post("/oauth/start", {
+      appChallenge: testAppChallenge,
+    });
+    assert.equal(invalidConfiguration.status, 503);
+  } finally {
+    env.OAUTH_PUBLIC_BASE_URL = original;
+  }
 });
 
 test("rate limiting blocks requests beyond the service-wide cap", async () => {
