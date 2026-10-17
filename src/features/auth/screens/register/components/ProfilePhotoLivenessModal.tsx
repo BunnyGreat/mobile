@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import {
   Camera,
-  runAsync,
   useCameraDevice,
   useCameraFormat,
   useCameraPermission,
@@ -122,14 +121,11 @@ const ProfilePhotoDetectionCamera: React.FC<
   const frameProcessor = useFrameProcessor(
     (frame) => {
       "worklet";
-      runAsync(frame, () => {
-        "worklet";
-        runOnJS(
-          JSON.stringify(detectFaces(frame)),
-          frame.width,
-          frame.height,
-        );
-      });
+      runOnJS(
+        JSON.stringify(detectFaces(frame)),
+        frame.width,
+        frame.height,
+      );
     },
     [detectFaces, runOnJS],
   );
