@@ -1,4 +1,37 @@
-# Registration Failure Fix - Complete Audit Report
+# Current production status — 2026-10-17
+
+The registration OTP fix is deployed and has passed a controlled live
+verification test:
+
+- The registration migration `20261011000000_registration_email_verification.sql`
+  was applied. Its prerequisite
+  `20260601000000_secure_password_reset.sql` was already applied.
+- Only the `send-otp` Edge Function was deployed for this change (active
+  version 13). The unrelated Google OAuth migration
+  `20261010000000_google_oauth_broker.sql` remains unapplied.
+- A controlled live test passed OTP request, invalid-code rejection, and valid
+  OTP verification.
+- The post-verification availability check returned `email_available=False`.
+  The server reports an email unavailable when it finds an account in Firebase
+  Authentication or Supabase Auth. This confirms the email is unavailable for
+  password-based registration, but does not disclose which auth system matched.
+  Firebase remains authoritative during final account creation.
+- Follow-up fix: password-based OTP requests now check Firebase Authentication
+  and Supabase Auth before creating a challenge or sending email. Registered
+  addresses receive HTTP 409 with `EMAIL_ALREADY_REGISTERED`. The deployed
+  `send-otp` function is now version 14; a live request using the previously
+  confirmed registered test address returned this response, and no OTP was
+  requested or delivered by that test. Google registration behavior is
+  unchanged.
+- No password-reset or Google OAuth function was changed. No additional
+  production change is needed based on these test results.
+
+The historical findings below describe earlier investigation stages and are
+superseded by this current production status.
+
+---
+
+# Historical Registration Failure Audit (Superseded)
 
 ## ⚠️ EXECUTIVE SUMMARY
 

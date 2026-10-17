@@ -1,17 +1,48 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   View,
   StyleSheet,
   Text,
   TouchableOpacity,
   Image,
   Alert,
+  Platform,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import { File } from "expo-file-system";
 import AppButton from "../../../../../components/ui/AppButton";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../../theme";
+import IdPhotoCameraModal from "./IdPhotoCameraModal";
+import {
+  parsePickerTarget,
+  PENDING_PICKER_KEY,
+  restorePendingPickerResult,
+  type PickerTarget,
+} from "./idPhotoPicker.helpers";
 
 import type { RegistrationDocuments } from "../types/register.types";
+
+const MAX_IMAGE_DIMENSION = 1920;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+type PickerImageAsset = {
+  uri: string;
+  width: number;
+  height: number;
+};
+
+const removeTemporaryImage = (uri: string) => {
+  try {
+    new File(uri).delete();
+  } catch {
+    if (__DEV__) {
+      console.warn("[ID Upload] Temporary image cleanup failed.");
+    }
+  }
+};
 
 type Props = {
   onNext?: (data: RegistrationDocuments) => void;
@@ -26,6 +57,225 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
   const [frontError, setFrontError] = useState("");
   const [backError, setBackError] = useState("");
   const [checkboxError, setCheckboxError] = useState("");
+  const [isPickingImage, setIsPickingImage] = useState(false);
+  const [cameraTarget, setCameraTarget] = useState<PickerTarget | null>(null);
+  const [isCameraCaptureVisible, setIsCameraCaptureVisible] = useState(false);
+  const pickerInProgressRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const setTargetError = (target: PickerTarget, message: string) => {
+    if (target.side === "front") setFrontError(message);
+    else setBackError(message);
+  };
+
+  const processSelectedImage = useCallback(
+    async (asset: PickerImageAsset, target: PickerTarget) => {
+      if (
+        !asset.uri ||
+        !Number.isFinite(asset.width) ||
+        !Number.isFinite(asset.height) ||
+        asset.width <= 0 ||
+        asset.height <= 0
+      ) {
+        if (target.source === "camera" && asset.uri.startsWith("file://")) {
+          removeTemporaryImage(asset.uri);
+        }
+        throw new Error("The selected image is unavailable or invalid.");
+      }
+
+      const resizeAction =
+        Math.max(asset.width, asset.height) > MAX_IMAGE_DIMENSION
+          ? [
+              {
+                resize:
+                  asset.width >= asset.height
+                    ? { width: MAX_IMAGE_DIMENSION }
+                    : { height: MAX_IMAGE_DIMENSION },
+              },
+            ]
+          : [];
+      let processedUri: string | null = null;
+      let accepted = false;
+      try {
+        const processedImage = await ImageManipulator.manipulateAsync(
+          asset.uri,
+          resizeAction,
+          {
+            compress: 0.82,
+            format: ImageManipulator.SaveFormat.JPEG,
+          },
+        );
+        processedUri = processedImage.uri;
+
+        if (
+          !processedImage.uri ||
+          processedImage.width <= 0 ||
+          processedImage.height <= 0
+        ) {
+          throw new Error("The selected image could not be processed.");
+        }
+
+        const imageSize = new File(processedImage.uri).size;
+        if (!Number.isFinite(imageSize)) {
+          throw new Error("The selected image size could not be read.");
+        }
+        if (imageSize > MAX_IMAGE_SIZE) {
+          throw new Error("The image must be 5MB or less.");
+        }
+
+        if (!mountedRef.current) return;
+        if (target.side === "front") setFrontUri(processedImage.uri);
+        else setBackUri(processedImage.uri);
+        setTargetError(target, "");
+        accepted = true;
+      } catch (error: unknown) {
+        if (__DEV__) {
+          console.warn("[ID Upload] Image processing failed.", {
+            errorType: error instanceof Error ? error.name : typeof error,
+          });
+        }
+        if (mountedRef.current) {
+          setTargetError(
+            target,
+            "Could not process this image. Please retake it or choose another.",
+          );
+        }
+      } finally {
+        if (target.source === "camera" && asset.uri.startsWith("file://")) {
+          removeTemporaryImage(asset.uri);
+        }
+        if (processedUri && !accepted) removeTemporaryImage(processedUri);
+      }
+    },
+    [],
+  );
+
+  const processPickerResult = useCallback(
+    async (
+      result:
+        | ImagePicker.ImagePickerResult
+        | ImagePicker.ImagePickerErrorResult,
+      target: PickerTarget,
+    ) => {
+      if ("code" in result) {
+        if (__DEV__) {
+          console.warn("[ID Upload] Image picker returned an error.", {
+            errorCode: result.code,
+          });
+        }
+        if (mountedRef.current) {
+          setTargetError(
+            target,
+            "The image library could not return the photo. Please try again.",
+          );
+        }
+        return;
+      }
+      if (result.canceled || !mountedRef.current) return;
+
+      const asset = result.assets?.[0];
+      if (!asset?.uri) {
+        throw new Error("The selected image is unavailable or invalid.");
+      }
+      await processSelectedImage(
+        { uri: asset.uri, width: asset.width, height: asset.height },
+        target,
+      );
+    },
+    [processSelectedImage],
+  );
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return undefined;
+    let active = true;
+
+    const recoverPendingPickerResult = async () => {
+      let rawTarget: string | null;
+      try {
+        rawTarget = await AsyncStorage.getItem(PENDING_PICKER_KEY);
+      } catch (error: unknown) {
+        if (__DEV__) {
+          console.warn("[ID Upload] Unable to read pending picker state.", {
+            errorType: error instanceof Error ? error.name : typeof error,
+          });
+        }
+        return;
+      }
+      if (!rawTarget || !active || pickerInProgressRef.current) return;
+
+      const target = parsePickerTarget(rawTarget);
+      if (!target) {
+        if (__DEV__) console.warn("[ID Upload] Pending picker target was invalid.");
+        try {
+          await AsyncStorage.removeItem(PENDING_PICKER_KEY);
+        } catch (error: unknown) {
+          if (__DEV__) {
+            console.warn("[ID Upload] Unable to clear invalid picker state.", {
+              errorType: error instanceof Error ? error.name : typeof error,
+            });
+          }
+        }
+        return;
+      }
+
+      pickerInProgressRef.current = true;
+      setIsPickingImage(true);
+      try {
+        const result = await restorePendingPickerResult(() =>
+          ImagePicker.getPendingResultAsync(),
+        );
+        if (!result) {
+          if (active) {
+            setTargetError(
+              target,
+              "The photo could not be restored. Please take the ID photo again.",
+            );
+          }
+          if (__DEV__) {
+            console.warn("[ID Upload] No pending result was available to restore.");
+          }
+          return;
+        }
+        await processPickerResult(result, target);
+      } catch (error: unknown) {
+        if (__DEV__) {
+          console.warn("[ID Upload] Pending image recovery failed.", {
+            errorType: error instanceof Error ? error.name : typeof error,
+          });
+        }
+        if (active) {
+          setTargetError(
+            target,
+            "The photo could not be restored. Please take the ID photo again.",
+          );
+        }
+      } finally {
+        try {
+          await AsyncStorage.removeItem(PENDING_PICKER_KEY);
+        } catch (error: unknown) {
+          if (__DEV__) {
+            console.warn("[ID Upload] Unable to clear pending picker state.", {
+              errorType: error instanceof Error ? error.name : typeof error,
+            });
+          }
+        }
+        pickerInProgressRef.current = false;
+        if (active) setIsPickingImage(false);
+      }
+    };
+
+    void recoverPendingPickerResult();
+    return () => {
+      active = false;
+    };
+  }, [processPickerResult]);
 
   const requestGalleryPermission = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -39,89 +289,102 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
     return true;
   };
 
-  const requestCameraPermission = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Permission required",
-        "Camera access is required to take ID photos.",
-      );
-      return false;
+  const pickImage = async (target: PickerTarget) => {
+    if (pickerInProgressRef.current) return;
+    pickerInProgressRef.current = true;
+    if (mountedRef.current) setIsPickingImage(true);
+
+    if (target.source === "camera") {
+      setCameraTarget(target);
+      setIsCameraCaptureVisible(true);
+      return;
     }
-    return true;
-  };
 
-  const validateAndSaveImage = async (
-    uri: string,
-    setUri: React.Dispatch<React.SetStateAction<string | null>>,
-    setError: React.Dispatch<React.SetStateAction<string>>,
-  ) => {
-    setUri(uri);
-    setError("");
-  };
+    try {
+      const hasPermission = await requestGalleryPermission();
 
-  const pickImage = async (
-    source: "gallery" | "camera",
-    setUri: React.Dispatch<React.SetStateAction<string | null>>,
-    setError: React.Dispatch<React.SetStateAction<string>>,
-  ) => {
-    const hasPermission =
-      source === "gallery"
-        ? await requestGalleryPermission()
-        : await requestCameraPermission();
+      if (!hasPermission || !mountedRef.current) return;
 
-    if (!hasPermission) return;
+      await AsyncStorage.setItem(PENDING_PICKER_KEY, JSON.stringify(target));
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 0.7,
+      });
 
-    const result =
-      source === "gallery"
-        ? await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ["images"],
-            allowsEditing: false,
-            quality: 0.7,
-          })
-        : await ImagePicker.launchCameraAsync({
-            mediaTypes: ["images"],
-            allowsEditing: false,
-            quality: 0.7,
+      await processPickerResult(result, target);
+    } catch (error: unknown) {
+      if (__DEV__) {
+        console.warn("[ID Upload] Image library launch failed.", {
+          errorType: error instanceof Error ? error.name : typeof error,
+        });
+      }
+      if (mountedRef.current) {
+        setTargetError(
+          target,
+          "Could not open the image library. Please try again.",
+        );
+      }
+    } finally {
+      try {
+        await AsyncStorage.removeItem(PENDING_PICKER_KEY);
+      } catch (error: unknown) {
+        if (__DEV__) {
+          console.warn("[ID Upload] Unable to clear picker state.", {
+            errorType: error instanceof Error ? error.name : typeof error,
           });
+        }
+      }
+      pickerInProgressRef.current = false;
+      if (mountedRef.current) setIsPickingImage(false);
+    }
+  };
 
-    if (result.canceled) return;
+  const closeCameraCapture = () => {
+    setIsCameraCaptureVisible(false);
+    setCameraTarget(null);
+    pickerInProgressRef.current = false;
+    if (mountedRef.current) setIsPickingImage(false);
+  };
 
-    const asset = result.assets?.[0];
-    const uri = asset?.uri;
-    if (!uri) return;
-
-    await validateAndSaveImage(uri, setUri, setError);
+  const handleCameraPhotoCaptured = async (photo: PickerImageAsset) => {
+    const target = cameraTarget;
+    if (!target) {
+      removeTemporaryImage(photo.uri);
+      return;
+    }
+    await processSelectedImage(photo, target);
+    closeCameraCapture();
   };
 
   const showUploadOptions = (
     title: string,
-    setUri: React.Dispatch<React.SetStateAction<string | null>>,
-    setError: React.Dispatch<React.SetStateAction<string>>,
+    side: PickerTarget["side"],
   ) => {
+    if (pickerInProgressRef.current || isPickingImage || isLoading) return;
     Alert.alert(title, "Choose image source", [
       {
         text: "Gallery",
-        onPress: () => pickImage("gallery", setUri, setError),
+        onPress: () => pickImage({ side, source: "gallery" }),
       },
       {
         text: "Camera",
-        onPress: () => pickImage("camera", setUri, setError),
+        onPress: () => pickImage({ side, source: "camera" }),
       },
       { text: "Cancel", style: "cancel" },
     ]);
   };
 
   const handleUploadFront = () => {
-    showUploadOptions("Upload Front Side of ID", setFrontUri, setFrontError);
+    showUploadOptions("Upload Front Side of ID", "front");
   };
 
   const handleUploadBack = () => {
-    showUploadOptions("Upload Back Side of ID", setBackUri, setBackError);
+    showUploadOptions("Upload Back Side of ID", "back");
   };
 
   const handleSubmit = () => {
-    if (isLoading) {
+    if (isLoading || isPickingImage) {
       return;
     }
 
@@ -204,6 +467,7 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
           style={[styles.uploadField, frontUri && styles.uploadFieldActive]}
           activeOpacity={0.8}
           onPress={handleUploadFront}
+          disabled={isPickingImage || isLoading}
         >
           {frontUri ? (
             <Image
@@ -241,6 +505,7 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
           style={[styles.uploadField, backUri && styles.uploadFieldActive]}
           activeOpacity={0.8}
           onPress={handleUploadBack}
+          disabled={isPickingImage || isLoading}
         >
           {backUri ? (
             <Image
@@ -267,6 +532,13 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
         </TouchableOpacity>
         {backError ? <Text style={styles.errorText}>{backError}</Text> : null}
       </View>
+
+      {isPickingImage ? (
+        <View style={styles.processingRow}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+          <Text style={styles.processingText}>Processing image...</Text>
+        </View>
+      ) : null}
 
       {/* Accepted IDs Card */}
       <View style={styles.noticeCard}>
@@ -313,7 +585,9 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
           onPress={handleSubmit}
           variant="primary"
           fullWidth
-          disabled={isLoading || !checked || !frontUri || !backUri}
+          disabled={
+            isLoading || isPickingImage || !checked || !frontUri || !backUri
+          }
           loading={isLoading}
           style={styles.nextButton}
         />
@@ -335,6 +609,12 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
       <Text style={styles.copyText}>
         © 2026 Barangay San Isidro. All rights reserved.
       </Text>
+
+      <IdPhotoCameraModal
+        visible={isCameraCaptureVisible}
+        onClose={closeCameraCapture}
+        onPhotoCaptured={handleCameraPhotoCaptured}
+      />
     </View>
   );
 };
@@ -518,6 +798,18 @@ const styles = StyleSheet.create({
   errorText: {
     marginTop: SPACING.xs,
     color: COLORS.danger,
+    fontSize: FONT_SIZE.body12,
+    fontFamily: FONT_FAMILY.regular,
+  },
+  processingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: SPACING.sm,
+    marginTop: SPACING.sm,
+  },
+  processingText: {
+    color: COLORS.paragraph,
     fontSize: FONT_SIZE.body12,
     fontFamily: FONT_FAMILY.regular,
   },

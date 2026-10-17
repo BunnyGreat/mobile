@@ -77,30 +77,14 @@ export const supabaseCreateOrSignIn = async (
   password: string,
 ): Promise<SupabaseAuthResult> => {
   const signUpResult = await supabaseSignUp(email, password);
-  if (!signUpResult.error && hasAuthSession(signUpResult.data)) {
-    return signUpResult;
+  if (signUpResult.error) return signUpResult;
+  if (!hasAuthSession(signUpResult.data)) {
+    return {
+      error: new Error(
+        "Supabase did not create a new registration session. Please try again.",
+      ),
+      data: signUpResult.data,
+    };
   }
-
-  const signInResult = await supabaseSignIn(email, password);
-  if (signInResult.error) {
-    return signInResult;
-  }
-
-  try {
-    const { data, error } = await supabase.auth.getSession();
-    if (error) {
-      return { error, data };
-    }
-
-    if (!data?.session) {
-      return {
-        error: new Error("Supabase session was not established after authentication."),
-        data,
-      };
-    }
-
-    return { data };
-  } catch (err) {
-    return { error: err };
-  }
+  return signUpResult;
 };

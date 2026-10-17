@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
@@ -7,18 +7,27 @@ import FormOtpInput from "../../../../components/forms/FormOtpInput";
 import type { RootStackNavigationProp } from "../../../../navigation/types";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../../theme";
 import { RegistrationStore, useRegisterStore } from "./store/register.store";
-import { createRegistrationOtp } from "./services/register.service";
+import {
+  createRegistrationOtp,
+  verifyRegistrationOtp,
+} from "./services/register.service";
 
 const RegisterOtpScreen: React.FC = () => {
   const [otp, setOtpValue] = useState("");
   const [otpError, setOtpError] = useState("");
   const email = useRegisterStore((state: RegistrationStore) => state.email);
+  const authMethod = useRegisterStore(
+    (state: RegistrationStore) => state.authMethod,
+  );
+  const otpChallengeId = useRegisterStore(
+    (state: RegistrationStore) => state.otpChallengeId,
+  );
   const otpExpiresAt = useRegisterStore(
     (state: RegistrationStore) => state.otpExpiresAt,
   );
   const setOtp = useRegisterStore((state: RegistrationStore) => state.setOtp);
-  const verifyOtp = useRegisterStore(
-    (state: RegistrationStore) => state.verifyOtp,
+  const markEmailVerified = useRegisterStore(
+    (state: RegistrationStore) => state.markEmailVerified,
   );
   const [countdown, setCountdown] = useState(
     otpExpiresAt
@@ -27,6 +36,9 @@ const RegisterOtpScreen: React.FC = () => {
   );
   const [resendCooldown, setResendCooldown] = useState(60);
   const [isSending, setIsSending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const isSendingRef = useRef(false);
+  const isVerifyingRef = useRef(false);
   const navigation = useNavigation<RootStackNavigationProp>();
 
   useEffect(() => {
@@ -57,17 +69,30 @@ const RegisterOtpScreen: React.FC = () => {
       .padStart(2, "0")}`;
   };
 
-  const otpExpired = otpExpiresAt !== null && Date.now() >= otpExpiresAt;
+  const otpExpired =
+    !otpChallengeId ||
+    otpExpiresAt === null ||
+    Date.now() >= otpExpiresAt;
 
   const handleResendCode = async () => {
-    if (resendCooldown > 0 || !email) return;
+    if (
+      resendCooldown > 0 ||
+      !email ||
+      isSendingRef.current ||
+      isVerifyingRef.current
+    ) {
+      return;
+    }
 
+    isSendingRef.current = true;
     setIsSending(true);
     try {
-      const nextOtp = await createRegistrationOtp(email);
-      setOtp(nextOtp.code, nextOtp.createdAt, nextOtp.expiresAt);
+      const nextOtp = await createRegistrationOtp(email, authMethod);
+      setOtp(nextOtp.challengeId, nextOtp.createdAt, nextOtp.expiresAt);
       setOtpValue("");
-      setCountdown(5 * 60);
+      setCountdown(
+        Math.max(0, Math.ceil((nextOtp.expiresAt - Date.now()) / 1000)),
+      );
       setResendCooldown(60);
       setOtpError("");
     } catch (error: unknown) {
@@ -77,28 +102,55 @@ const RegisterOtpScreen: React.FC = () => {
           : "Failed to resend verification code.";
       setOtpError(message);
     } finally {
+      isSendingRef.current = false;
       setIsSending(false);
     }
   };
 
-  const handleVerifyContinue = () => {
-    if (!otp) {
+  const handleVerifyContinue = async () => {
+    if (isVerifyingRef.current || isSendingRef.current) return;
+    if (otp.length !== 6) {
       setOtpError("Enter the 6-digit verification code.");
       return;
     }
 
-    if (otpExpired) {
+    if (otpExpired || !otpChallengeId) {
       setOtpError("OTP has expired. Please request a new code.");
       return;
     }
 
-    if (!verifyOtp(otp)) {
-      setOtpError("Invalid verification code.");
-      return;
+    isVerifyingRef.current = true;
+    setIsVerifying(true);
+    try {
+      const result = await verifyRegistrationOtp(
+        email,
+        otpChallengeId,
+        otp,
+        authMethod,
+      );
+      if (!result.valid) {
+        setOtpError("Invalid or expired verification code. Please try again.");
+        return;
+      }
+      if (!result.emailAvailable) {
+        setOtpError(
+          "This email is already registered. Please sign in or use a different email address.",
+        );
+        return;
+      }
+      setOtpError("");
+      markEmailVerified();
+      navigation.replace("PersonalInformation");
+    } catch (error: unknown) {
+      setOtpError(
+        error instanceof Error
+          ? error.message
+          : "Unable to verify your email. Please try again.",
+      );
+    } finally {
+      isVerifyingRef.current = false;
+      setIsVerifying(false);
     }
-
-    setOtpError("");
-    navigation.navigate("PersonalInformation");
   };
 
   const handleOtpChange = (value: string) => {
@@ -168,7 +220,7 @@ const RegisterOtpScreen: React.FC = () => {
           <Text style={styles.resendText}>Didn't receive the code? </Text>
           <TouchableOpacity
             onPress={handleResendCode}
-            disabled={resendCooldown > 0 || isSending}
+            disabled={resendCooldown > 0 || isSending || isVerifying}
           >
             <Text style={styles.resendLink}>
               {resendCooldown > 0
@@ -186,7 +238,8 @@ const RegisterOtpScreen: React.FC = () => {
           variant="primary"
           fullWidth
           style={styles.verifyButton}
-          disabled={otpExpired}
+          disabled={otpExpired || isVerifying || isSending}
+          loading={isVerifying}
         />
 
         <View style={styles.infoBox}>
