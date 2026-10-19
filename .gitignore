@@ -44,6 +44,10 @@ yarn-error.*
 /ios
 /android
 
+# Firebase Android configuration
+/google-services.json
+/android/app/google-services.json
+
 # Supabase local generated files
 supabase/.temp/
 
