@@ -6,6 +6,63 @@ import type {
   RegistrationFormData,
 } from "../types/register.types";
 
+export const registrationCredentialsSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .min(1, "Email is required.")
+      .email("Please enter a valid email address."),
+    password: z
+      .string()
+      .min(1, "Password is required.")
+      .min(8, "Password must be at least 8 characters.")
+      .regex(/[A-Z]/, "Password must contain an uppercase letter.")
+      .regex(/[a-z]/, "Password must contain a lowercase letter.")
+      .regex(/[0-9]/, "Password must contain a number.")
+      .regex(/[^a-zA-Z0-9]/, "Password must contain a special character."),
+    confirmPassword: z.string().min(1, "Please confirm your password."),
+  })
+  .refine(({ password, confirmPassword }) => password === confirmPassword, {
+    message: "Passwords do not match.",
+    path: ["confirmPassword"],
+  });
+
+export type RegistrationCredentialsErrors = {
+  email: string;
+  password: string;
+  confirmPassword: string;
+};
+
+export const validateRegistrationCredentials = (values: {
+  email: string;
+  password: string;
+  confirmPassword: string;
+}): { isValid: boolean; errors: RegistrationCredentialsErrors } => {
+  const result = registrationCredentialsSchema.safeParse(values);
+  const errors: RegistrationCredentialsErrors = {
+    email: "",
+    password: "",
+    confirmPassword: "",
+  };
+
+  if (result.success) return { isValid: true, errors };
+
+  for (const issue of result.error.issues) {
+    const field = issue.path[0];
+    if (
+      (field === "email" ||
+        field === "password" ||
+        field === "confirmPassword") &&
+      !errors[field]
+    ) {
+      errors[field] = issue.message;
+    }
+  }
+
+  return { isValid: false, errors };
+};
+
 export const personalInformationSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   middleName: z.string().min(1, "Middle name is required"),

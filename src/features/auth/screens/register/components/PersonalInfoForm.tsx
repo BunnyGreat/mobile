@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ type Props = {
 };
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const PHOTO_PROCESSING_TIMEOUT_MS = 25_000;
 
 const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
   // Form field states
@@ -42,7 +43,15 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
   const [photoError, setPhotoError] = useState("");
   const [cameraOpen, setCameraOpen] = useState(false);
   const [photoProcessing, setPhotoProcessing] = useState(false);
+  const mountedRef = useRef(true);
   const closePhotoCamera = useCallback(() => setCameraOpen(false), []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Format contact number
   const formatContactNumber = (digits: string) => {
@@ -126,23 +135,58 @@ const PersonalInformationForm: React.FC<Props> = ({ onNext, onBack }) => {
 
   const handleVerifiedPhoto = useCallback(
     async (uri: string) => {
+      if (!mountedRef.current) return;
       setPhotoProcessing(true);
+      console.info("[Registration] Profile photo processing started.");
+      let timedOut = false;
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
+      const processingPromise = compressPhoto(uri);
       try {
-        const compressedUri = await compressPhoto(uri);
-        setPhotoUri(compressedUri);
-        setPhotoError("");
+        const compressedUri = await Promise.race([
+          processingPromise,
+          new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => {
+              timedOut = true;
+              reject(new Error("Profile photo processing timed out. Please retry."));
+            }, PHOTO_PROCESSING_TIMEOUT_MS);
+          }),
+        ]);
+        if (!mountedRef.current) {
+          try {
+            new File(compressedUri).delete();
+          } catch {
+            console.warn("Unable to clean up an abandoned profile image.");
+          }
+          return;
+        }
+        if (mountedRef.current) {
+          setPhotoUri(compressedUri);
+          setPhotoError("");
+          console.info("[Registration] Profile photo processing completed.");
+        }
       } catch (error: unknown) {
+        if (timedOut) {
+          void processingPromise
+            .then((lateUri) => new File(lateUri).delete())
+            .catch(() => {
+              console.warn("Unable to clean up a timed-out profile image.");
+            });
+        }
         const message =
           error instanceof Error ? error.message : "Failed to process photo.";
-        setPhotoError(message);
+        console.error("[Registration] Profile photo processing failed.", {
+          errorType: error instanceof Error ? error.name : typeof error,
+        });
+        if (mountedRef.current) setPhotoError(message);
         throw new Error(message);
       } finally {
+        if (timeoutId) clearTimeout(timeoutId);
         try {
           new File(uri).delete();
         } catch (error: unknown) {
           console.warn("Failed to remove temporary profile capture.", error);
         }
-        setPhotoProcessing(false);
+        if (mountedRef.current) setPhotoProcessing(false);
       }
     },
     [compressPhoto],

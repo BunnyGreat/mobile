@@ -57,12 +57,21 @@ interface GoogleJwk extends JsonWebKey {
   kid?: string;
 }
 
+interface RequestContext {
+  requestId: string;
+  stage: string;
+}
+
 const GOOGLE_AUTHORIZATION_ENDPOINT =
   "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token";
 const GOOGLE_CERTS_ENDPOINT = "https://www.googleapis.com/oauth2/v3/certs";
 const APP_REDIRECT_URI = "barangay://oauth/google";
 const TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
+const ALLOWED_OAUTH_HOSTS = new Set([
+  "auth.barangay-san-isidro.help",
+  "barangay-google-oauth.nadurajohnlloyd8.workers.dev",
+]);
 const encoder = new TextEncoder();
 const decoder = new TextDecoder("utf-8", { fatal: true });
 const CORS_HEADERS = {
@@ -86,11 +95,29 @@ const logOAuthDiagnostic = (
   status: number,
   category: string,
   fieldsPresent: Record<string, boolean>,
+  requestId?: string,
 ): void => {
   console.info(
     "[GOOGLE OAUTH]",
-    JSON.stringify({ stage, status, category, fieldsPresent }),
+    JSON.stringify({
+      stage,
+      status,
+      category,
+      fieldsPresent,
+      ...(requestId ? { requestId } : {}),
+    }),
   );
+};
+
+const withRequestId = (response: Response, requestId: string): Response => {
+  const headers = new Headers(response.headers);
+  headers.set("X-Request-ID", requestId);
+  headers.set("Access-Control-Expose-Headers", "X-Request-ID");
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 };
 
 const logNonceDiagnostic = (
@@ -125,26 +152,37 @@ const appRedirect = (error?: string, ticket?: string): Response => {
   });
 };
 
-const baseUrl = (env: Env): URL => {
-  let url: URL;
+const baseUrl = (env: Env, requestOrigin?: string): URL => {
+  let configuredUrl: URL;
   try {
-    url = new URL(env.OAUTH_PUBLIC_BASE_URL);
+    configuredUrl = new URL(env.OAUTH_PUBLIC_BASE_URL);
   } catch {
-    throw new BrokerError(503, "service_unavailable");
+    throw new BrokerError(503, "oauth_configuration_error");
   }
-  if (
-    url.protocol !== "https:" ||
-    !url.hostname.endsWith(".workers.dev") ||
-    url.username ||
-    url.password ||
-    url.port ||
-    url.pathname !== "/" ||
-    url.search ||
-    url.hash
-  ) {
-    throw new BrokerError(503, "service_unavailable");
+  const isAllowedOrigin = (url: URL): boolean =>
+    url.protocol === "https:" &&
+    ALLOWED_OAUTH_HOSTS.has(url.hostname) &&
+    !url.username &&
+    !url.password &&
+    !url.port &&
+    url.pathname === "/" &&
+    !url.search &&
+    !url.hash;
+  if (!isAllowedOrigin(configuredUrl)) {
+    throw new BrokerError(503, "oauth_configuration_error");
   }
-  return url;
+  if (requestOrigin === undefined) return configuredUrl;
+
+  let incomingUrl: URL;
+  try {
+    incomingUrl = new URL(requestOrigin);
+  } catch {
+    throw new BrokerError(503, "oauth_configuration_error");
+  }
+  if (!isAllowedOrigin(incomingUrl)) {
+    throw new BrokerError(503, "oauth_configuration_error");
+  }
+  return incomingUrl;
 };
 
 const randomToken = (): string => {
@@ -183,7 +221,7 @@ const challengeFor = async (verifier: string): Promise<string> =>
 const encryptionKey = async (env: Env): Promise<CryptoKey> => {
   if (typeof env.OAUTH_DATA_ENCRYPTION_KEY !== "string" ||
       env.OAUTH_DATA_ENCRYPTION_KEY.length < 32) {
-    throw new BrokerError(503, "service_unavailable");
+    throw new BrokerError(503, "encryption_configuration_error");
   }
   const keyMaterial = await sha256(env.OAUTH_DATA_ENCRYPTION_KEY);
   return crypto.subtle.importKey("raw", keyMaterial, "AES-GCM", false, ["encrypt", "decrypt"]);
@@ -243,7 +281,7 @@ const consumeRateLimit = async (
   ]);
   const attemptCount = Number(results[3]?.results?.[0]?.attempts);
   if (!Number.isInteger(attemptCount) || attemptCount < 1) {
-    throw new BrokerError(503, "service_unavailable");
+    throw new BrokerError(503, "storage_unavailable");
   }
   return attemptCount <= maximum;
 };
@@ -424,10 +462,16 @@ const verifyGoogleIdToken = async (
   }
 };
 
-const handleStart = async (request: Request, env: Env): Promise<Response> => {
+const handleStart = async (
+  request: Request,
+  env: Env,
+  context: RequestContext,
+): Promise<Response> => {
+  context.stage = "start_rate_limit";
   if (!(await consumeRateLimit(env, "start", 100))) {
     throw new BrokerError(429, "rate_limited");
   }
+  context.stage = "start_request_validation";
   const body = await readJsonBody(request, ["appChallenge"]);
   if (
     typeof body.appChallenge !== "string" ||
@@ -435,28 +479,37 @@ const handleStart = async (request: Request, env: Env): Promise<Response> => {
   ) {
     throw new BrokerError(400, "invalid_request");
   }
-  if (!env.GOOGLE_OAUTH_CLIENT_ID || !env.GOOGLE_OAUTH_CLIENT_SECRET) {
-    throw new BrokerError(503, "service_unavailable");
+  context.stage = "start_oauth_configuration";
+  if (
+    typeof env.GOOGLE_OAUTH_CLIENT_ID !== "string" ||
+    !env.GOOGLE_OAUTH_CLIENT_ID ||
+    typeof env.GOOGLE_OAUTH_CLIENT_SECRET !== "string" ||
+    !env.GOOGLE_OAUTH_CLIENT_SECRET
+  ) {
+    throw new BrokerError(503, "oauth_configuration_error");
   }
-  const publicBaseUrl = baseUrl(env);
+  const publicBaseUrl = baseUrl(env, new URL(request.url).origin);
   const state = randomToken();
   const nonce = randomToken();
   const googleNonce = await sha256Hex(nonce);
   const codeVerifier = randomToken();
   const now = Math.floor(Date.now() / 1000);
+  context.stage = "start_encryption";
   const payload = await encrypt(env, JSON.stringify({
     nonce,
     codeVerifier,
     appChallenge: body.appChallenge,
   } satisfies AttemptPayload));
+  context.stage = "start_attempt_storage";
   const inserted = await env.DB.prepare(
     `INSERT INTO oauth_attempts (state_hash, payload_ciphertext, expires_at)
      VALUES (?1, ?2, ?3) ON CONFLICT(state_hash) DO NOTHING`,
   ).bind(await sha256Hex(state), payload, now + 300).run();
   if (inserted.meta?.changes !== 1) {
-    throw new BrokerError(503, "service_unavailable");
+    throw new BrokerError(503, "storage_unavailable");
   }
 
+  context.stage = "start_authorization_url";
   const authorizationUrl = new URL(GOOGLE_AUTHORIZATION_ENDPOINT);
   authorizationUrl.search = new URLSearchParams({
     client_id: env.GOOGLE_OAUTH_CLIENT_ID,
@@ -477,7 +530,7 @@ const handleStart = async (request: Request, env: Env): Promise<Response> => {
   logOAuthDiagnostic("oauth_start", 200, "success", {
     appChallenge: true,
     authorizationUrl: true,
-  });
+  }, context.requestId);
   return jsonResponse({ authorizationUrl: authorizationUrl.toString() });
 };
 
@@ -502,6 +555,7 @@ const handleCallback = async (request: Request, env: Env): Promise<Response> => 
   };
   let stage = "callback_rate_limit";
   try {
+    const callbackBaseUrl = baseUrl(env, new URL(request.url).origin);
     if (!(await consumeRateLimit(env, "callback", 100))) {
       logOAuthDiagnostic("callback_rate_limit", 302, "rate_limited", {
         state: false,
@@ -588,7 +642,7 @@ const handleCallback = async (request: Request, env: Env): Promise<Response> => 
           code,
           client_id: env.GOOGLE_OAUTH_CLIENT_ID,
           client_secret: env.GOOGLE_OAUTH_CLIENT_SECRET,
-          redirect_uri: new URL("/oauth/callback", baseUrl(env)).toString(),
+          redirect_uri: new URL("/oauth/callback", callbackBaseUrl).toString(),
           grant_type: "authorization_code",
           code_verifier: attempt.codeVerifier,
         }),
@@ -783,28 +837,55 @@ const handleRedeem = async (request: Request, env: Env): Promise<Response> => {
 const withMethod = async (
   request: Request,
   env: Env,
-  handler: (request: Request, env: Env) => Promise<Response>,
+  handler: (
+    request: Request,
+    env: Env,
+    context: RequestContext,
+  ) => Promise<Response>,
   stage: string,
 ): Promise<Response> => {
   if (request.method === "OPTIONS") {
     return new Response(null, { headers: CORS_HEADERS });
   }
+  const context: RequestContext = {
+    requestId: crypto.randomUUID(),
+    stage,
+  };
   if (request.method !== "POST") {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return withRequestId(
+      jsonResponse({ error: "method_not_allowed" }, 405),
+      context.requestId,
+    );
   }
   try {
-    return await handler(request, env);
+    return withRequestId(
+      await handler(request, env, context),
+      context.requestId,
+    );
   } catch (error: unknown) {
     if (error instanceof BrokerError) {
-      logOAuthDiagnostic(stage, error.status, error.code, {
+      logOAuthDiagnostic(context.stage, error.status, error.code, {
         requestBody: request.headers.get("content-type") === "application/json",
-      });
-      return jsonResponse({ error: error.code }, error.status);
+      }, context.requestId);
+      return withRequestId(
+        jsonResponse({ error: error.code }, error.status),
+        context.requestId,
+      );
     }
-    logOAuthDiagnostic(stage, 503, "service_unavailable", {
+    const category =
+      context.stage === "start_rate_limit" ||
+        context.stage === "start_attempt_storage"
+        ? "storage_unavailable"
+        : context.stage === "start_encryption"
+          ? "encryption_unavailable"
+          : "service_unavailable";
+    logOAuthDiagnostic(context.stage, 503, category, {
       requestBody: request.headers.get("content-type") === "application/json",
-    });
-    return jsonResponse({ error: "service_unavailable" }, 503);
+    }, context.requestId);
+    return withRequestId(
+      jsonResponse({ error: category }, 503),
+      context.requestId,
+    );
   }
 };
 

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Linking,
   Modal,
   StyleSheet,
@@ -10,12 +11,13 @@ import {
 } from "react-native";
 import {
   Camera,
-  runAsync,
   useCameraDevice,
+  useCameraFormat,
   useCameraPermission,
   useFrameProcessor,
   type CameraDevice,
 } from "react-native-vision-camera";
+import { File } from "expo-file-system";
 import {
   type Face,
   type FrameFaceDetectionOptions,
@@ -35,7 +37,20 @@ type Props = {
 };
 
 const CHALLENGE_TIMEOUT_MS = 90_000;
-const MIN_FACE_WIDTH = 0.15;
+const CAPTURE_TIMEOUT_MS = 30_000;
+const MIN_FACE_WIDTH = 0.1;
+const DIAGNOSTIC_INTERVAL_MS = 500;
+const NO_FACE_GUIDANCE =
+  "No face detected. Keep your face visible in the guide.";
+const PHASE_GUIDANCE: Partial<Record<LivenessPhase, string>> = {
+  centering: "Center your face and look directly at the camera.",
+  "look-left": "Slowly look to your left.",
+  "look-right": "Slowly look to your right.",
+  blinking: "Look back at the camera and blink naturally.",
+  returning: "Return to the center and look directly at the camera.",
+  capturing: "Liveness checks passed. Capturing your photo...",
+  success: "Liveness verified. Your photo is ready.",
+};
 
 const getFileUri = (path: string) =>
   path.startsWith("file://") ? path : `file://${path}`;
@@ -54,7 +69,13 @@ type ProfilePhotoDetectionCameraProps = {
 
 const ProfilePhotoDetectionCamera: React.FC<
   ProfilePhotoDetectionCameraProps
-> = ({ cameraRef, device, isActive, onFacesDetected, onError }) => {
+> = ({
+  cameraRef,
+  device,
+  isActive,
+  onFacesDetected,
+  onError,
+}) => {
   const faceDetectionOptions = useRef<FrameFaceDetectionOptions>({
     cameraFacing: "front",
     performanceMode: "fast",
@@ -63,33 +84,48 @@ const ProfilePhotoDetectionCamera: React.FC<
     minFaceSize: MIN_FACE_WIDTH,
     trackingEnabled: true,
   }).current;
+  const format = useCameraFormat(device, [{ fps: 30 }]);
+  const fps: [number, number] | undefined = (() => {
+    if (!format) return undefined;
+    const maxFps = Math.min(format.maxFps, 30);
+    const minFps = Math.min(maxFps, Math.max(format.minFps, 15));
+    return [minFps, maxFps];
+  })();
   const { detectFaces, stopListeners } = useFaceDetector(faceDetectionOptions);
   const runOnJS = useMemo(
     () =>
       Worklets.createRunOnJS(
         (facesJSON: string, frameWidth: number, frameHeight: number) => {
-          const faces: Face[] = JSON.parse(facesJSON);
-          const detectionDimensions = getDetectionFrameDimensions(
-            frameWidth,
-            frameHeight,
-          );
-          onFacesDetected(
-            faces,
-            detectionDimensions.width,
-            detectionDimensions.height,
-          );
+          try {
+            const faces: Face[] = JSON.parse(facesJSON);
+            const detectionDimensions = getDetectionFrameDimensions(
+              frameWidth,
+              frameHeight,
+            );
+            onFacesDetected(
+              faces,
+              detectionDimensions.width,
+              detectionDimensions.height,
+            );
+          } catch (error: unknown) {
+            onError(
+              error instanceof Error
+                ? error
+                : new Error("Face detection results could not be read."),
+            );
+          }
         },
       ),
-    [onFacesDetected],
+    [onError, onFacesDetected],
   );
   const frameProcessor = useFrameProcessor(
     (frame) => {
       "worklet";
-      runAsync(frame, () => {
-        "worklet";
-        const facesJSON = JSON.stringify(detectFaces(frame));
-        runOnJS(facesJSON, frame.width, frame.height);
-      });
+      runOnJS(
+        JSON.stringify(detectFaces(frame)),
+        frame.width,
+        frame.height,
+      );
     },
     [detectFaces, runOnJS],
   );
@@ -101,6 +137,9 @@ const ProfilePhotoDetectionCamera: React.FC<
       ref={cameraRef}
       style={StyleSheet.absoluteFill}
       device={device}
+      format={format}
+      fps={fps}
+      lowLightBoost={device.supportsLowLightBoost ? true : undefined}
       isActive={isActive}
       outputOrientation="preview"
       photo={true}
@@ -117,6 +156,9 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
 }) => {
   const device = useCameraDevice("front");
   const permission = useCameraPermission();
+  const [appState, setAppState] = useState(
+    AppState.currentState ?? "active",
+  );
   const cameraRef = useRef<Camera>(null);
   const challengeRef = useRef(new LivenessChallenge());
 
@@ -127,13 +169,31 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
   const [failureMessage, setFailureMessage] = useState("");
   const [permissionError, setPermissionError] = useState("");
   const [permissionDenied, setPermissionDenied] = useState(false);
+  const [cameraPaused, setCameraPaused] = useState(false);
 
   const phaseRef = useRef<LivenessPhase>("centering");
-  const guidanceRef = useRef("Center your face and look directly at the camera.");
+  const guidanceRef = useRef(
+    "Center your face and look directly at the camera.",
+  );
   const captureStartedRef = useRef(false);
+  const mountedRef = useRef(true);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastLivenessLogAtRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", setAppState);
+    return () => subscription.remove();
+  }, []);
 
   const setCurrentPhase = useCallback((nextPhase: LivenessPhase) => {
+    if (!mountedRef.current) return;
     phaseRef.current = nextPhase;
     setPhase(nextPhase);
   }, []);
@@ -141,6 +201,7 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
   const failChallenge = useCallback(
     (reason: string) => {
       challengeRef.current.fail(reason);
+      if (!mountedRef.current) return;
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
         timeoutRef.current = null;
@@ -158,12 +219,18 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
     }
   }, []);
 
-  const startTimeoutTimer = useCallback(() => {
-    clearTimeoutTimer();
-    timeoutRef.current = setTimeout(() => {
-      failChallenge(`This step timed out. ${guidanceRef.current} Please try again.`);
-    }, CHALLENGE_TIMEOUT_MS);
-  }, [clearTimeoutTimer, failChallenge]);
+  const startTimeoutTimer = useCallback(
+    (
+      timeoutMs = CHALLENGE_TIMEOUT_MS,
+      timeoutMessage = `This step timed out. ${guidanceRef.current} Please try again.`,
+    ) => {
+      clearTimeoutTimer();
+      timeoutRef.current = setTimeout(() => {
+        failChallenge(timeoutMessage);
+      }, timeoutMs);
+    },
+    [clearTimeoutTimer, failChallenge],
+  );
 
   const resetChallenge = useCallback(() => {
     challengeRef.current.reset();
@@ -171,6 +238,7 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
     setFailureMessage("");
     guidanceRef.current = "Center your face and look directly at the camera.";
     setGuidance(guidanceRef.current);
+    setCameraPaused(false);
     setCurrentPhase("centering");
     startTimeoutTimer();
   }, [setCurrentPhase, startTimeoutTimer]);
@@ -180,6 +248,10 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
 
     captureStartedRef.current = true;
     setCurrentPhase("capturing");
+    startTimeoutTimer(
+      CAPTURE_TIMEOUT_MS,
+      "Profile photo processing timed out. Please retry.",
+    );
 
     try {
       const camera = cameraRef.current;
@@ -189,7 +261,32 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
         flash: "off",
         enableShutterSound: false,
       });
-      await onPhotoCaptured(getFileUri(photo.path));
+      const photoUri = getFileUri(photo.path);
+      if (!mountedRef.current) {
+        try {
+          new File(photoUri).delete();
+        } catch {
+          if (__DEV__) {
+            console.warn("Unable to clean up an abandoned profile capture.");
+          }
+        }
+        return;
+      }
+      setCameraPaused(true);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      if (!mountedRef.current) {
+        try {
+          new File(photoUri).delete();
+        } catch {
+          if (__DEV__) {
+            console.warn("Unable to clean up an abandoned profile capture.");
+          }
+        }
+        return;
+      }
+      await onPhotoCaptured(photoUri);
+      if (!mountedRef.current) return;
+      if (challengeRef.current.phase !== "capturing") return;
       clearTimeoutTimer();
       challengeRef.current.completeCapture();
       setCurrentPhase("success");
@@ -197,11 +294,16 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
       setGuidance(guidanceRef.current);
       timeoutRef.current = setTimeout(onClose, 900);
     } catch (error: unknown) {
+      if (mountedRef.current) setCameraPaused(false);
       const reason =
         error instanceof Error
           ? error.message
           : "The photo could not be captured. Please retry.";
-      console.error("Profile photo capture failed.", error);
+      if (__DEV__) {
+        console.error("[Liveness] Profile photo capture failed.", {
+          errorType: error instanceof Error ? error.name : typeof error,
+        });
+      }
       failChallenge(reason);
       captureStartedRef.current = false;
     }
@@ -211,11 +313,16 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
     onClose,
     onPhotoCaptured,
     setCurrentPhase,
+    startTimeoutTimer,
   ]);
 
   const handleDetectionError = useCallback(
     (error: Error) => {
-      console.error("Profile camera or face detection failed.", error);
+      if (__DEV__) {
+        console.error("[Liveness] Camera or face detection failed.", {
+          errorType: error.name,
+        });
+      }
       failChallenge("Face detection stopped unexpectedly. Please retry.");
     },
     [failChallenge],
@@ -223,6 +330,7 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
 
   const handleFacesDetected = useCallback(
     (faces: Face[], frameWidth: number, frameHeight: number) => {
+      if (!mountedRef.current) return;
       const challenge = challengeRef.current;
       if (
         challenge.phase === "capturing" ||
@@ -233,16 +341,49 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
       }
 
       if (faces.length === 0) {
-        const noFaceMessage =
-          "No face detected. Keep your face visible in the guide.";
-        if (guidanceRef.current !== noFaceMessage) {
-          guidanceRef.current = noFaceMessage;
-          setGuidance(noFaceMessage);
+        const update = challenge.process([], frameWidth, frameHeight);
+        if (__DEV__ && Date.now() - lastLivenessLogAtRef.current >= DIAGNOSTIC_INTERVAL_MS) {
+          lastLivenessLogAtRef.current = Date.now();
+          console.info("[Liveness Runtime]", {
+            faceCount: 0,
+            frameWidth,
+            frameHeight,
+            ...challenge.getDiagnostics(),
+          });
+        }
+        if (update.phase === "failed") {
+          clearTimeoutTimer();
+          setCurrentPhase("failed");
+          setFailureMessage(
+            update.failureMessage ?? "We could not see your face. Please retry.",
+          );
+          return;
+        }
+        if (guidanceRef.current !== NO_FACE_GUIDANCE) {
+          guidanceRef.current = NO_FACE_GUIDANCE;
+          setGuidance(NO_FACE_GUIDANCE);
         }
         return;
       }
 
+      if (guidanceRef.current === NO_FACE_GUIDANCE) {
+        const currentGuidance = PHASE_GUIDANCE[challenge.phase];
+        if (currentGuidance) {
+          guidanceRef.current = currentGuidance;
+          setGuidance(currentGuidance);
+        }
+      }
+
       const update = challenge.process(faces, frameWidth, frameHeight);
+      if (__DEV__ && Date.now() - lastLivenessLogAtRef.current >= DIAGNOSTIC_INTERVAL_MS) {
+        lastLivenessLogAtRef.current = Date.now();
+        console.info("[Liveness Runtime]", {
+          faceCount: faces.length,
+          frameWidth,
+          frameHeight,
+          ...challenge.getDiagnostics(),
+        });
+      }
       if (update.phase === "failed") {
         clearTimeoutTimer();
         setCurrentPhase("failed");
@@ -251,23 +392,21 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
       }
 
       if (update.phase !== phaseRef.current) {
+        if (__DEV__) {
+          console.info("[Liveness] Challenge advanced.", {
+            from: phaseRef.current,
+            to: update.phase,
+          });
+        }
         setCurrentPhase(update.phase);
-        const messages: Partial<Record<LivenessPhase, string>> = {
-          centering: "Center your face and look directly at the camera.",
-          "look-left": "Slowly look to your left.",
-          "look-right": "Slowly look to your right.",
-          blinking: "Please blink naturally.",
-          returning: "Return to the center and look directly at the camera.",
-          capturing: "Liveness checks passed. Capturing your photo...",
-          success: "Liveness verified. Your photo is ready.",
-        };
-        const nextGuidance = messages[update.phase];
+        const nextGuidance = PHASE_GUIDANCE[update.phase];
         if (nextGuidance) {
           guidanceRef.current = nextGuidance;
           setGuidance(nextGuidance);
         }
       }
       if (update.shouldCapture) {
+        clearTimeoutTimer();
         void captureVerifiedPhoto();
       }
     },
@@ -297,7 +436,11 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
       })
       .catch((error: unknown) => {
         if (active) {
-          console.error("Camera permission request failed.", error);
+          if (__DEV__) {
+            console.error("[Liveness] Camera permission request failed.", {
+              errorType: error instanceof Error ? error.name : typeof error,
+            });
+          }
           setPermissionError("Camera permission could not be requested.");
         }
       });
@@ -318,7 +461,11 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
       permission.requestPermission().then(
         (granted) => setPermissionDenied(!granted),
         (error: unknown) => {
-          console.error("Camera permission request failed.", error);
+          if (__DEV__) {
+            console.error("[Liveness] Camera permission request failed.", {
+              errorType: error instanceof Error ? error.name : typeof error,
+            });
+          }
           setPermissionError("Camera permission could not be requested.");
         },
       );
@@ -326,12 +473,13 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
     captureStartedRef.current = false;
     setFailureMessage("");
     const resumedPhase = challengeRef.current.retry();
+    setCameraPaused(false);
     setCurrentPhase(resumedPhase);
     const retryInstructions: Partial<Record<LivenessPhase, string>> = {
       centering: "Center your face and look directly at the camera.",
       "look-left": "Please repeat the look-left movement.",
       "look-right": "Please repeat the look-right movement.",
-      blinking: "Please blink naturally again.",
+      blinking: "Look back at the camera and blink naturally again.",
       returning: "Return to the center and look directly at the camera.",
       capturing: "Liveness checks passed. Capturing your photo...",
     };
@@ -344,14 +492,23 @@ const ProfilePhotoLivenessModal: React.FC<Props> = ({
 
   const openSettings = () => {
     Linking.openSettings().catch((error: unknown) => {
-      console.error("Could not open app settings.", error);
+      if (__DEV__) {
+        console.error("[Liveness] Could not open app settings.", {
+          errorType: error instanceof Error ? error.name : typeof error,
+        });
+      }
       setPermissionError("Settings could not be opened. Please open them manually.");
     });
   };
 
   const isPermissionDenied = !permission.hasPermission && permissionDenied;
   const cameraActive =
-    visible && permission.hasPermission && !!device && phase !== "failed";
+    visible &&
+    appState === "active" &&
+    permission.hasPermission &&
+    !!device &&
+    !cameraPaused &&
+    phase !== "failed";
   const closeCamera = () => {
     if (phaseRef.current !== "capturing") {
       clearTimeoutTimer();

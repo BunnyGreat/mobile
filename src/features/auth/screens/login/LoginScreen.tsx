@@ -89,7 +89,7 @@ const LoginScreen: React.FC = () => {
           if (result.type === "new-registration") {
             let otp: Awaited<ReturnType<typeof createRegistrationOtp>>;
             try {
-              otp = await createRegistrationOtp(result.email);
+              otp = await createRegistrationOtp(result.email, "google");
             } catch {
               Alert.alert(
                 "Registration Code Failed",
@@ -98,7 +98,7 @@ const LoginScreen: React.FC = () => {
               return;
             }
             saveGoogleAccount(result.email, result.firebaseUid);
-            setOtp(otp.code, otp.createdAt, otp.expiresAt);
+            setOtp(otp.challengeId, otp.createdAt, otp.expiresAt);
             navigation.navigate("RegisterOtp");
             return;
           }

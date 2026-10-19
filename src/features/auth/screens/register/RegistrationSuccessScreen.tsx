@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { View, Image, Text, StyleSheet } from "react-native";
 import ScreenContainer from "../../../../components/common/ScreenContainer";
 import AppButton from "../../../../components/ui/AppButton";
@@ -9,17 +9,12 @@ import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../theme";
 const RegistrationSuccessScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const referenceId = useRegisterStore((state) => state.referenceId);
-
-  useEffect(() => {}, [referenceId]);
+  const clearRegistration = useRegisterStore(
+    (state) => state.clearRegistration,
+  );
 
   const handleReturnToLogin = () => {
-    // Call clearRegistration if the app exposes it on global scope
-    try {
-      (globalThis as any).clearRegistration?.();
-    } catch (e) {
-      // ignore
-    }
-
+    clearRegistration();
     navigation.reset({
       index: 0,
       routes: [{ name: "Login" }],

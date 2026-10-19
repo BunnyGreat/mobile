@@ -14,6 +14,18 @@ export type GoogleAuthenticationOutcome =
 
 class GoogleStorageAuthenticationError extends Error {}
 
+const getSafeAuthenticationErrorCode = (error: unknown): string | null => {
+  if (error instanceof GoogleAuthenticationError) return error.code;
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? error.code
+      : null;
+  return typeof code === "string" &&
+      /^[A-Za-z0-9_./-]{1,80}$/.test(code)
+    ? code
+    : null;
+};
+
 const getSafeSupabaseErrorDetails = (error: unknown) => {
   const details =
     typeof error === "object" && error !== null
@@ -79,15 +91,18 @@ const signInToSupabase = async (
 
 export const authenticateGoogleResident =
   async (): Promise<GoogleAuthenticationOutcome> => {
+    let stage = "google_firebase_sign_in";
     try {
       const {
         user: firebaseUser,
         googleIdToken,
         supabaseNonce,
       } = await signInWithGoogleFirebase();
+      stage = "firestore_profile_fetch";
       const userDocument = await getDoc(doc(db, "users", firebaseUser.uid));
 
       if (!userDocument.exists()) {
+        stage = "supabase_google_id_token";
         await signInToSupabase(googleIdToken, supabaseNonce);
         const email = firebaseUser.email;
         if (!email) {
@@ -137,8 +152,10 @@ export const authenticateGoogleResident =
         return { type: "resident", user: loginUser };
       }
 
+      stage = "supabase_google_id_token";
       await signInToSupabase(googleIdToken, supabaseNonce);
 
+      stage = "profile_photo_lookup";
       try {
         loginUser.profilePhotoUrl =
           (await resolveProfilePhotoUrl(
@@ -154,9 +171,16 @@ export const authenticateGoogleResident =
 
       return { type: "resident", user: loginUser };
     } catch (error: unknown) {
+      const errorCode = getSafeAuthenticationErrorCode(error);
+      console.error(
+        "[GOOGLE AUTH] Resident authentication failed.",
+        JSON.stringify({
+          stage,
+          ...(errorCode ? { errorCode } : {}),
+        }),
+      );
       if (error instanceof GoogleAuthenticationError) throw error;
       if (error instanceof GoogleStorageAuthenticationError) throw error;
-      console.error("[GOOGLE AUTH] Resident authentication failed.");
       throw new Error(
         "Unable to complete Google sign-in. Please try again.",
       );

@@ -48,7 +48,16 @@
         }
       ],
       "./plugins/with-vision-camera-android-toolchain",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/logo.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
     ],
     "scheme": "barangay",
     "extra": {

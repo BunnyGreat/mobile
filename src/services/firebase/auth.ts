@@ -18,14 +18,37 @@ export type GoogleFirebaseSignInResult = {
   supabaseNonce?: string;
 };
 
+const getSafeGoogleAuthErrorCode = (error: unknown): string | null => {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? error.code
+      : null;
+  if (
+    typeof code === "string" &&
+    /^[A-Za-z0-9_./-]{1,80}$/.test(code)
+  ) {
+    return code;
+  }
+  return typeof code === "number" && Number.isInteger(code)
+    ? String(code)
+    : null;
+};
+
 const logGoogleAuthDiagnostic = (
   stage: string,
   category: string,
   fieldsPresent: Record<string, boolean>,
+  errorCode?: string | null,
 ): void => {
   console.info(
     "[GOOGLE OAUTH]",
-    JSON.stringify({ stage, status: null, category, fieldsPresent }),
+    JSON.stringify({
+      stage,
+      status: null,
+      category,
+      fieldsPresent,
+      ...(errorCode ? { errorCode } : {}),
+    }),
   );
 };
 
@@ -33,22 +56,22 @@ const signInToFirebaseWithGoogleIdToken = async (
   googleIdToken: string,
   supabaseNonce?: string,
 ): Promise<GoogleFirebaseSignInResult> => {
+  logGoogleAuthDiagnostic("firebase_credential_exchange", "started", {
+    idToken: Boolean(googleIdToken),
+  });
   const credential = GoogleAuthProvider.credential(googleIdToken);
   let result: Awaited<ReturnType<typeof signInWithCredential>>;
   try {
     result = await signInWithCredential(auth, credential);
   } catch (error: unknown) {
-    const code =
-      typeof error === "object" && error !== null && "code" in error
-        ? String(error.code)
-        : "";
+    const code = getSafeGoogleAuthErrorCode(error) ?? "";
     if (
       code === "auth/invalid-credential" ||
       code === "auth/invalid-idp-response"
     ) {
       logGoogleAuthDiagnostic("firebase_auth", "token_rejected", {
         idToken: Boolean(googleIdToken),
-      });
+      }, code);
       throw new GoogleAuthenticationError(
         "google_firebase_token_rejected",
         "Firebase rejected the Google sign-in token. Please try again.",
@@ -57,7 +80,7 @@ const signInToFirebaseWithGoogleIdToken = async (
     if (code === "auth/network-request-failed") {
       logGoogleAuthDiagnostic("firebase_auth", "network_error", {
         idToken: Boolean(googleIdToken),
-      });
+      }, code);
       throw new GoogleAuthenticationError(
         "google_firebase_network_failed",
         "Unable to reach Firebase. Check your connection and try again.",
@@ -65,7 +88,7 @@ const signInToFirebaseWithGoogleIdToken = async (
     }
     logGoogleAuthDiagnostic("firebase_auth", "authentication_failed", {
       idToken: Boolean(googleIdToken),
-    });
+    }, code);
     throw error;
   }
   const user = result.user;
@@ -101,8 +124,10 @@ export const signInWithGoogleFirebase =
       );
     }
 
+    let stage = "google_client_configuration";
     try {
       GoogleSignin.configure({ webClientId: getGoogleWebClientId() });
+      stage = "native_play_services";
       try {
         await GoogleSignin.hasPlayServices({
           showPlayServicesUpdateDialog: false,
@@ -120,12 +145,16 @@ export const signInWithGoogleFirebase =
         logGoogleAuthDiagnostic("native_play_services", "unavailable", {
           browserFallbackAvailable: true,
         });
+        stage = "browser_oauth_fallback";
         const { idToken, nonce } = await signInWithGoogleBrowserFallback();
+        stage = "firebase_credential_exchange";
         return await signInToFirebaseWithGoogleIdToken(idToken, nonce);
       }
+      stage = "native_sign_out";
       await GoogleSignin.signOut();
 
       let response: Awaited<ReturnType<typeof GoogleSignin.signIn>>;
+      stage = "native_sign_in";
       try {
         response = await GoogleSignin.signIn();
       } catch (error: unknown) {
@@ -141,7 +170,9 @@ export const signInWithGoogleFirebase =
         logGoogleAuthDiagnostic("native_play_services", "unavailable", {
           browserFallbackAvailable: true,
         });
+        stage = "browser_oauth_fallback";
         const { idToken, nonce } = await signInWithGoogleBrowserFallback();
+        stage = "firebase_credential_exchange";
         return await signInToFirebaseWithGoogleIdToken(idToken, nonce);
       }
 
@@ -152,7 +183,14 @@ export const signInWithGoogleFirebase =
         );
       }
 
+      stage = "google_id_token";
       const googleIdToken = response.data.idToken;
+      logGoogleAuthDiagnostic("native_sign_in", "account_selected", {
+        account: Boolean(response.data.user?.id),
+        email: Boolean(response.data.user?.email),
+        idToken: Boolean(googleIdToken),
+        serverAuthCode: Boolean(response.data.serverAuthCode),
+      });
       if (!googleIdToken) {
         throw new GoogleAuthenticationError(
           "google_token_missing",
@@ -160,14 +198,26 @@ export const signInWithGoogleFirebase =
         );
       }
 
+      stage = "firebase_credential_exchange";
       return await signInToFirebaseWithGoogleIdToken(googleIdToken);
     } catch (error: unknown) {
-      if (error instanceof GoogleAuthenticationError) throw error;
-
       const code =
-        typeof error === "object" && error !== null && "code" in error
-          ? String(error.code)
-          : "";
+        error instanceof GoogleAuthenticationError
+          ? error.code
+          : getSafeGoogleAuthErrorCode(error) ?? "";
+      if (
+        !(error instanceof GoogleAuthenticationError) ||
+        error.code !== "google_sign_in_cancelled"
+      ) {
+        console.error(
+          "[GOOGLE AUTH] Sign-In failed.",
+          JSON.stringify({
+            stage,
+            ...(code ? { errorCode: code } : {}),
+          }),
+        );
+      }
+      if (error instanceof GoogleAuthenticationError) throw error;
 
       if (code === statusCodes.SIGN_IN_CANCELLED) {
         throw new GoogleAuthenticationError(
@@ -186,7 +236,6 @@ export const signInWithGoogleFirebase =
         );
       }
 
-      console.error("[GOOGLE AUTH] Sign-In failed.");
       throw new GoogleAuthenticationError(
         "google_sign_in_failed",
         "Unable to sign in with Google. Please try again.",

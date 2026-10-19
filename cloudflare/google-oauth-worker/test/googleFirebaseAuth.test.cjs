@@ -40,7 +40,19 @@ const createHarness = ({
   browserError,
   signInResponse = {
     type: "success",
-    data: { idToken: "native-google-id-token" },
+    data: {
+      user: {
+        id: "native-google-user-id",
+        name: "Resident",
+        email: "resident@example.test",
+        photo: null,
+        familyName: null,
+        givenName: null,
+      },
+      scopes: [],
+      idToken: "native-google-id-token",
+      serverAuthCode: null,
+    },
   },
   firebaseError,
 } = {}) => {
@@ -217,18 +229,125 @@ test("unrelated native and network errors do not invoke browser fallback", async
   assert.equal(harness.counts.signIn, 0);
 });
 
+test("native sign-in failures log the stage and safe provider code only", async () => {
+  const harness = createHarness({
+    signInError: {
+      code: "DEVELOPER_ERROR",
+      message: "authorization token=must-not-be-logged",
+    },
+  });
+  const originalError = console.error;
+  const diagnostics = [];
+  console.error = (...args) => diagnostics.push(args.join(" "));
+  try {
+    await assert.rejects(harness.signInWithGoogleFirebase(), (error) =>
+      error instanceof authErrors.GoogleAuthenticationError &&
+      error.code === "google_sign_in_failed",
+    );
+  } finally {
+    console.error = originalError;
+  }
+
+  const log = diagnostics.join("\n");
+  assert.match(log, /"stage":"native_sign_in"/);
+  assert.match(log, /"errorCode":"DEVELOPER_ERROR"/);
+  assert.doesNotMatch(log, /must-not-be-logged|native-google-id-token|eyJ/);
+  assert.equal(harness.counts.browser, 0);
+});
+
+test("native account selection logs token presence without account data or token values", async () => {
+  const harness = createHarness({
+    firebaseError: { code: "auth/invalid-credential" },
+  });
+  const originalInfo = console.info;
+  const originalError = console.error;
+  const diagnostics = [];
+  console.info = (...args) => diagnostics.push(args.join(" "));
+  console.error = (...args) => diagnostics.push(args.join(" "));
+  try {
+    await assert.rejects(harness.signInWithGoogleFirebase(), (error) =>
+      error instanceof authErrors.GoogleAuthenticationError &&
+      error.code === "google_firebase_token_rejected",
+    );
+  } finally {
+    console.info = originalInfo;
+    console.error = originalError;
+  }
+
+  const log = diagnostics.join("\n");
+  assert.match(log, /"stage":"native_sign_in","status":null,"category":"account_selected"/);
+  assert.match(log, /"idToken":true/);
+  assert.match(log, /"stage":"firebase_credential_exchange","status":null,"category":"started"/);
+  assert.match(log, /"stage":"firebase_auth","status":null,"category":"token_rejected"/);
+  assert.match(log, /"errorCode":"auth\/invalid-credential"/);
+  assert.doesNotMatch(
+    log,
+    /native-google-id-token|native-google-user-id|resident@example\.test|eyJ[A-Za-z0-9_-]+\./,
+  );
+  assert.equal(harness.counts.browser, 0);
+});
+
+test("missing native ID token is logged without invoking the browser fallback", async () => {
+  const harness = createHarness({
+    signInResponse: {
+      type: "success",
+      data: {
+        user: { id: "native-google-user-id", email: "resident@example.test" },
+        idToken: null,
+      },
+    },
+  });
+  const originalInfo = console.info;
+  const originalError = console.error;
+  const diagnostics = [];
+  console.info = (...args) => diagnostics.push(args.join(" "));
+  console.error = (...args) => diagnostics.push(args.join(" "));
+  try {
+    await assert.rejects(harness.signInWithGoogleFirebase(), (error) =>
+      error instanceof authErrors.GoogleAuthenticationError &&
+      error.code === "google_token_missing",
+    );
+  } finally {
+    console.info = originalInfo;
+    console.error = originalError;
+  }
+
+  const log = diagnostics.join("\n");
+  assert.match(log, /"category":"account_selected"/);
+  assert.match(log, /"idToken":false/);
+  assert.match(log, /"errorCode":"google_token_missing"/);
+  assert.doesNotMatch(log, /native-google-user-id|resident@example\.test/);
+  assert.equal(harness.counts.firebase, 0);
+  assert.equal(harness.counts.browser, 0);
+});
+
 test("Firebase credential errors do not re-enter browser fallback", async () => {
   const harness = createHarness({
     firebaseError: { code: "auth/invalid-credential" },
   });
 
-  await assert.rejects(harness.signInWithGoogleFirebase(), (error) =>
-    error instanceof authErrors.GoogleAuthenticationError &&
-    error.code === "google_firebase_token_rejected",
-  );
+  const originalInfo = console.info;
+  const originalError = console.error;
+  const diagnostics = [];
+  console.info = (...args) => diagnostics.push(args.join(" "));
+  console.error = (...args) => diagnostics.push(args.join(" "));
+  try {
+    await assert.rejects(harness.signInWithGoogleFirebase(), (error) =>
+      error instanceof authErrors.GoogleAuthenticationError &&
+      error.code === "google_firebase_token_rejected",
+    );
+  } finally {
+    console.info = originalInfo;
+    console.error = originalError;
+  }
+
   assert.equal(harness.counts.browser, 0);
   assert.equal(harness.counts.signIn, 1);
   assert.equal(harness.counts.firebase, 1);
+  const log = diagnostics.join("\n");
+  assert.match(log, /"stage":"firebase_auth"/);
+  assert.match(log, /"errorCode":"auth\/invalid-credential"/);
+  assert.doesNotMatch(log, /native-google-id-token|eyJ[A-Za-z0-9_-]+\./);
 });
 
 test("Firebase network errors get a specific retryable message", async () => {

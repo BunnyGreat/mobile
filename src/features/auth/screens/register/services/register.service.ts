@@ -4,7 +4,6 @@ import { uploadFileToSupabase } from "../../../../../services/supabase/storageUp
 import {
   createUserWithEmailAndPassword,
   deleteUser,
-  fetchSignInMethodsForEmail,
   UserCredential,
 } from "firebase/auth";
 import { FirebaseError } from "firebase/app";
@@ -25,86 +24,77 @@ import type {
   RegistrationDocuments,
   RegistrationAuthMethod,
 } from "../types/register.types";
+import {
+  createRegistrationOtpRequestBody,
+  createRegistrationOtpVerificationBody,
+  getDuplicateFirebaseEmailMessage,
+  getOtpFunctionErrorDiagnostics,
+  getOtpFunctionErrorMessage,
+  isDuplicateFirebaseEmailError,
+  parseRegistrationOtpChallenge,
+  parseRegistrationOtpVerification,
+} from "./registrationOtp.helpers";
 
-export const checkEmailExists = async (email: string): Promise<boolean> => {
-  try {
-    const methods = await fetchSignInMethodsForEmail(auth, email);
-    const existsInAuth = methods.length > 0;
-    return existsInAuth;
-  } catch (error: unknown) {
-    throw error;
-  }
+type RegistrationOtpChallenge = {
+  challengeId: string;
+  createdAt: number;
+  expiresAt: number;
 };
 
-export const checkEmailAvailability = async (
-  email: string,
-): Promise<boolean> => {
-  const exists = await checkEmailExists(email);
-  return exists;
-};
+type RegistrationOtpAuthMethod = "password" | "google";
 
-export const sendRegistrationOtpEmail = async (
-  email: string,
-  otpCode: string,
-): Promise<void> => {
-  if (!email || !otpCode) {
-    throw new Error("Invalid OTP email payload.");
+const getOtpFunctionError = async (
+  error: unknown,
+  action: "send" | "verify",
+): Promise<Error> => {
+  const diagnostics = await getOtpFunctionErrorDiagnostics(error, action);
+  if (__DEV__) {
+    console.warn(
+      "[Registration OTP] Verification service request failed.",
+      diagnostics,
+    );
   }
-
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  if (!supabaseUrl) {
-    throw new Error("Supabase URL not configured.");
-  }
-
-  try {
-    // Call Supabase Edge Function to send OTP via Resend
-    // The Edge Function handles the Resend API key securely on the server
-    const response = await supabase.functions.invoke("send-otp", {
-      body: {
-        email,
-        otpCode,
-        type: "registration",
-      },
-    });
-
-    // Handle response errors
-    if (response.error) {
-      const errorMessage = response.error instanceof Error 
-        ? response.error.message 
-        : typeof response.error === "string"
-        ? response.error
-        : "Failed to send verification email";
-      throw new Error(errorMessage);
-    }
-
-    // Check response data for success
-    if (response.data?.success === false) {
-      throw new Error(
-        response.data.error || "Failed to send verification email"
-      );
-    }
-
-    // Verify response indicates success
-    if (!response.data?.success) {
-      throw new Error("Failed to send verification email. Please try again.");
-    }
-  } catch (error: unknown) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to send verification email. Please try again.";
-    throw new Error(message);
-  }
+  return new Error(getOtpFunctionErrorMessage(diagnostics, action));
 };
 
 export const createRegistrationOtp = async (
   email: string,
-): Promise<{ code: string; createdAt: number; expiresAt: number }> => {
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  authMethod: RegistrationOtpAuthMethod = "password",
+): Promise<RegistrationOtpChallenge> => {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (!normalizedEmail) throw new Error("Enter a valid email address.");
+
   const createdAt = Date.now();
-  const expiresAt = createdAt + 5 * 60 * 1000;
-  await sendRegistrationOtpEmail(email, code);
-  return { code, createdAt, expiresAt };
+  const { data, error } = await supabase.functions.invoke<unknown>("send-otp", {
+    body: createRegistrationOtpRequestBody(normalizedEmail, authMethod),
+  });
+  if (error) {
+    throw await getOtpFunctionError(error, "send");
+  }
+  return parseRegistrationOtpChallenge(data, createdAt);
+};
+
+export const verifyRegistrationOtp = async (
+  email: string,
+  challengeId: string,
+  code: string,
+  authMethod: RegistrationOtpAuthMethod,
+): Promise<
+  | { valid: true; emailAvailable: boolean }
+  | { valid: false; reason: "invalid-code" }
+> => {
+  const { data, error } = await supabase.functions.invoke<unknown>("send-otp", {
+    body: createRegistrationOtpVerificationBody(
+      email.trim().toLowerCase(),
+      challengeId,
+      code,
+      authMethod,
+    ),
+  });
+  if (error) {
+    throw await getOtpFunctionError(error, "verify");
+  }
+  return parseRegistrationOtpVerification(data, authMethod);
 };
 
 export const generateReferenceId = (): string => {
@@ -139,7 +129,7 @@ export const uploadImage = async (
     fileName,
     uri,
     contentType: getContentType(getFileExtension(uri)),
-    compressImage: true,
+    compressImage: false,
     maxFileSizeBytes: 5 * 1024 * 1024,
     upsert: true,
   });
@@ -191,12 +181,31 @@ const logRegistrationFailure = (
   fn: string,
 ) => {
   if (__DEV__) {
+    const details =
+      typeof error === "object" && error !== null
+        ? (error as {
+            name?: unknown;
+            code?: unknown;
+            status?: unknown;
+          })
+        : {};
+    const code =
+      typeof details.code === "string" &&
+      /^[A-Za-z0-9_./-]{1,80}$/.test(details.code)
+        ? details.code
+        : undefined;
+    const status =
+      typeof details.status === "number" &&
+      Number.isInteger(details.status)
+        ? details.status
+        : undefined;
     console.error(`[REGISTER] ${context}`, {
       file,
       function: fn,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      raw: error,
+      errorType:
+        typeof details.name === "string" ? details.name : "UnknownError",
+      ...(code ? { code } : {}),
+      ...(status !== undefined ? { status } : {}),
     });
   }
 };
@@ -207,6 +216,7 @@ export const registerUser = async (
   password: string | null,
   authMethod: RegistrationAuthMethod = "password",
   expectedFirebaseUid: string | null = null,
+  emailOtpVerified = false,
 ): Promise<
   | { success: true; uid: string; referenceId: string }
   | { success: false; error: string }
@@ -214,6 +224,10 @@ export const registerUser = async (
   let credential: UserCredential | null = null;
 
   try {
+    if (!emailOtpVerified) {
+      throw new Error("Please verify your email before completing registration.");
+    }
+
     if (!formData.documents?.frontIdUri || !formData.documents?.backIdUri) {
       throw new Error("Identification documents are required.");
     }
@@ -308,12 +322,11 @@ export const registerUser = async (
   } catch (error: unknown) {
     if (
       error instanceof FirebaseError &&
-      error.code === "auth/email-already-in-use"
+      isDuplicateFirebaseEmailError(error)
     ) {
       return {
         success: false,
-        error:
-          "This email is already registered. Please use another email address or log in instead.",
+        error: getDuplicateFirebaseEmailMessage(),
       };
     }
 
@@ -338,7 +351,10 @@ export const registerUser = async (
     }
 
     const message =
-      error instanceof Error ? error.message : "Unknown registration error";
+      error instanceof FirebaseError &&
+      error.code === "auth/network-request-failed"
+        ? "A network problem prevented registration. Check your connection and try again."
+        : "Unable to complete registration. Please try again later.";
     return { success: false, error: message };
   }
 };

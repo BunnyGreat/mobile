@@ -13,7 +13,8 @@ export interface RegistrationStore {
   password: string;
   firebaseUid: string | null;
   authMethod: RegistrationAuthMethod;
-  otpCode: string | null;
+  emailVerified: boolean;
+  otpChallengeId: string | null;
   otpCreatedAt: number | null;
   otpExpiresAt: number | null;
   personalInformation: RegistrationPersonalInformation | null;
@@ -22,17 +23,16 @@ export interface RegistrationStore {
   isLoading: boolean;
   referenceId: string | null;
   saveAccountCredentials: (email: string, password: string) => void;
+  saveEmailForVerification: (email: string) => void;
+  markEmailVerified: () => void;
+  clearEmailVerification: () => void;
   saveGoogleAccount: (email: string, firebaseUid: string) => void;
   savePersonalInformation: (data: RegistrationPersonalInformation) => void;
   saveResidenceInformation: (data: RegistrationResidenceInformation) => void;
   saveDocuments: (data: RegistrationDocuments) => void;
   setLoading: (value: boolean) => void;
   setReferenceId: (id: string) => void;
-  setOtpCode: (code: string | null) => void;
-  setOtpExpiration: (timestamp: number | null) => void;
-  setOtp: (code: string, createdAt: number, expiresAt: number) => void;
-  verifyOtp: (code: string) => boolean;
-  clearOtp: () => void;
+  setOtp: (challengeId: string, createdAt: number, expiresAt: number) => void;
   isOtpExpired: () => boolean;
   getRegistrationData: () => {
     email: string;
@@ -52,7 +52,8 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
   password: "",
   firebaseUid: null,
   authMethod: "password",
-  otpCode: null,
+  emailVerified: false,
+  otpChallengeId: null,
   otpCreatedAt: null,
   otpExpiresAt: null,
   personalInformation: null,
@@ -67,7 +68,7 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
       password,
       firebaseUid: null,
       authMethod: "password",
-      otpCode: null,
+      otpChallengeId: null,
       otpCreatedAt: null,
       otpExpiresAt: null,
       personalInformation: null,
@@ -76,13 +77,47 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
       referenceId: null,
     })),
 
+  saveEmailForVerification: (email) =>
+    set(() => ({
+      email,
+      password: "",
+      firebaseUid: null,
+      authMethod: "password",
+      emailVerified: false,
+      otpChallengeId: null,
+      otpCreatedAt: null,
+      otpExpiresAt: null,
+      personalInformation: null,
+      residenceInformation: null,
+      documents: null,
+      referenceId: null,
+    })),
+
+  markEmailVerified: () =>
+    set(() => ({
+      emailVerified: true,
+      otpChallengeId: null,
+      otpCreatedAt: null,
+      otpExpiresAt: null,
+    })),
+
+  clearEmailVerification: () =>
+    set(() => ({
+      emailVerified: false,
+      password: "",
+      otpChallengeId: null,
+      otpCreatedAt: null,
+      otpExpiresAt: null,
+    })),
+
   saveGoogleAccount: (email, firebaseUid) =>
     set(() => ({
       email,
       password: "",
       firebaseUid,
       authMethod: "google",
-      otpCode: null,
+      emailVerified: false,
+      otpChallengeId: null,
       otpCreatedAt: null,
       otpExpiresAt: null,
       personalInformation: null,
@@ -104,35 +139,12 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
 
   setReferenceId: (id) => set(() => ({ referenceId: id })),
 
-  setOtpCode: (code) => set(() => ({ otpCode: code })),
-
-  setOtpExpiration: (timestamp) =>
-    set(() => ({ otpExpiresAt: timestamp })),
-
-  setOtp: (code, createdAt, expiresAt) =>
+  setOtp: (challengeId, createdAt, expiresAt) =>
     set(() => ({
-      otpCode: code,
+      otpChallengeId: challengeId,
       otpCreatedAt: createdAt,
       otpExpiresAt: expiresAt,
     })),
-
-  verifyOtp: (code) => {
-    const { otpCode, otpExpiresAt } = get();
-    if (!otpCode || !otpExpiresAt) {
-      set({ otpCode: null, otpCreatedAt: null, otpExpiresAt: null });
-      return false;
-    }
-
-    if (Date.now() >= otpExpiresAt) {
-      set({ otpCode: null, otpCreatedAt: null, otpExpiresAt: null });
-      return false;
-    }
-
-    return otpCode === code;
-  },
-
-  clearOtp: () =>
-    set(() => ({ otpCode: null, otpCreatedAt: null, otpExpiresAt: null })),
 
   isOtpExpired: () => {
     const { otpExpiresAt } = get();
@@ -140,7 +152,7 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
 
     const expired = Date.now() >= otpExpiresAt;
     if (expired) {
-      set({ otpCode: null, otpCreatedAt: null, otpExpiresAt: null });
+      set({ otpChallengeId: null, otpCreatedAt: null, otpExpiresAt: null });
     }
     return expired;
   },
@@ -179,9 +191,14 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
         password,
         firebaseUid,
         authMethod,
+        emailVerified,
         personalInformation,
         residenceInformation,
       } = get();
+
+      if (!emailVerified) {
+        throw new Error("Please verify your email before completing registration.");
+      }
 
       if (
         !email ||
@@ -205,6 +222,7 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
         password || null,
         authMethod,
         firebaseUid,
+        emailVerified,
       );
 
       if (!result.success) {
@@ -229,7 +247,8 @@ export const useRegisterStore = create<RegistrationStore>((set, get) => ({
       password: "",
       firebaseUid: null,
       authMethod: "password",
-      otpCode: null,
+      emailVerified: false,
+      otpChallengeId: null,
       otpCreatedAt: null,
       otpExpiresAt: null,
       personalInformation: null,

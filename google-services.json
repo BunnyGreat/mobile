@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "384183671098-mdj712i0vdri052075ukhlbijarp088l.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sanisidro.ebrgy",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "384183671098-8hlskg5oq415h8n1b25va28dov1t8391.apps.googleusercontent.com",
           "client_type": 3
         }
