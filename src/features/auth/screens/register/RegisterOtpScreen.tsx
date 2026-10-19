@@ -70,9 +70,7 @@ const RegisterOtpScreen: React.FC = () => {
   };
 
   const otpExpired =
-    !otpChallengeId ||
-    otpExpiresAt === null ||
-    Date.now() >= otpExpiresAt;
+    !otpChallengeId || otpExpiresAt === null || Date.now() >= otpExpiresAt;
 
   const handleResendCode = async () => {
     if (
