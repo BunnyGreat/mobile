@@ -14,8 +14,11 @@ import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import { File } from "expo-file-system";
 import AppButton from "../../../../../components/ui/AppButton";
+import AppCheckbox from "../../../../../components/ui/AppCheckbox";
 import { SPACING, COLORS, FONT_FAMILY, FONT_SIZE } from "../../../../../theme";
 import IdPhotoCameraModal from "./IdPhotoCameraModal";
+import TermsConditionsModal from "../../../../setting/components/modals/TermsConditionsModal";
+import PrivacyPolicyModal from "../../../../setting/components/modals/PrivacyPolicyModal";
 import {
   parsePickerTarget,
   PENDING_PICKER_KEY,
@@ -54,9 +57,13 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
   const [frontUri, setFrontUri] = useState<string | null>(null);
   const [backUri, setBackUri] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [agreementAccepted, setAgreementAccepted] = useState(false);
   const [frontError, setFrontError] = useState("");
   const [backError, setBackError] = useState("");
   const [checkboxError, setCheckboxError] = useState("");
+  const [agreementError, setAgreementError] = useState("");
+  const [termsVisible, setTermsVisible] = useState(false);
+  const [privacyVisible, setPrivacyVisible] = useState(false);
   const [isPickingImage, setIsPickingImage] = useState(false);
   const [cameraTarget, setCameraTarget] = useState<PickerTarget | null>(null);
   const [isCameraCaptureVisible, setIsCameraCaptureVisible] = useState(false);
@@ -393,12 +400,21 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
     const checkboxValidation = checked
       ? ""
       : "You must confirm that the information is true.";
+    const agreementValidation = agreementAccepted
+      ? ""
+      : "Please agree to the Terms and Conditions and Privacy Policy to continue.";
 
     setFrontError(frontValidation);
     setBackError(backValidation);
     setCheckboxError(checkboxValidation);
+    setAgreementError(agreementValidation);
 
-    if (!frontValidation && !backValidation && !checkboxValidation) {
+    if (
+      !frontValidation &&
+      !backValidation &&
+      !checkboxValidation &&
+      !agreementValidation
+    ) {
       if (onNext)
         onNext({
           frontIdUri: frontUri,
@@ -578,6 +594,43 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
         ) : null}
       </View>
 
+      <View style={styles.consentSection}>
+        <View style={styles.consentRow}>
+          <AppCheckbox
+            checked={agreementAccepted}
+            label=""
+            accessibilityLabel="Agree to the Terms and Conditions and Privacy Policy"
+            onChange={(value) => {
+              setAgreementAccepted(value);
+              if (value) setAgreementError("");
+            }}
+            style={styles.consentCheckbox}
+          />
+          <Text style={styles.consentText}>
+            I have read and agree to the{" "}
+            <Text
+              accessibilityRole="link"
+              onPress={() => setTermsVisible(true)}
+              style={styles.consentLink}
+            >
+              Terms and Conditions
+            </Text>{" "}
+            and{" "}
+            <Text
+              accessibilityRole="link"
+              onPress={() => setPrivacyVisible(true)}
+              style={styles.consentLink}
+            >
+              Privacy Policy
+            </Text>
+            .
+          </Text>
+        </View>
+        {agreementError ? (
+          <Text style={styles.errorText}>{agreementError}</Text>
+        ) : null}
+      </View>
+
       {/* Bottom Actions */}
       <View style={styles.actionsRow}>
         <AppButton
@@ -586,7 +639,7 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
           variant="primary"
           fullWidth
           disabled={
-            isLoading || isPickingImage || !checked || !frontUri || !backUri
+            isLoading || isPickingImage || !frontUri || !backUri
           }
           loading={isLoading}
           style={styles.nextButton}
@@ -614,6 +667,14 @@ const UploadIdForm: React.FC<Props> = ({ onNext, onBack, isLoading }) => {
         visible={isCameraCaptureVisible}
         onClose={closeCameraCapture}
         onPhotoCaptured={handleCameraPhotoCaptured}
+      />
+      <TermsConditionsModal
+        visible={termsVisible}
+        onClose={() => setTermsVisible(false)}
+      />
+      <PrivacyPolicyModal
+        visible={privacyVisible}
+        onClose={() => setPrivacyVisible(false)}
       />
     </View>
   );
@@ -847,6 +908,30 @@ const styles = StyleSheet.create({
   },
   checkboxSection: {
     marginBottom: SPACING.lg,
+  },
+  consentSection: {
+    marginBottom: SPACING.lg,
+  },
+  consentRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  consentCheckbox: {
+    alignItems: "flex-start",
+    marginTop: 1,
+    marginRight: SPACING.sm,
+  },
+  consentText: {
+    flex: 1,
+    fontSize: FONT_SIZE.body14,
+    fontFamily: FONT_FAMILY.regular,
+    color: COLORS.heading,
+    lineHeight: FONT_SIZE.body14 * 1.5,
+  },
+  consentLink: {
+    color: COLORS.primary,
+    fontFamily: FONT_FAMILY.semibold,
+    textDecorationLine: "underline",
   },
   checkboxContainer: {
     flexDirection: "row",
