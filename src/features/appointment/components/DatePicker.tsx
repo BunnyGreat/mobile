@@ -1,8 +1,40 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
+
+const APPOINTMENT_TIME_ZONE = "Asia/Manila";
+
+const getManilaToday = (): Date => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: APPOINTMENT_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = Number(parts.find((part) => part.type === "year")?.value);
+  const month = Number(parts.find((part) => part.type === "month")?.value);
+  const day = Number(parts.find((part) => part.type === "day")?.value);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    throw new Error("Unable to determine the current date in Asia/Manila.");
+  }
+
+  return new Date(year, month - 1, day);
+};
+
+const getWeekdays = (today: Date): Date[] => {
+  const monday = new Date(today);
+  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+
+  return Array.from({ length: 5 }, (_, index) => {
+    const date = new Date(monday);
+    date.setDate(monday.getDate() + index);
+    date.setHours(12, 0, 0, 0);
+    return date;
+  });
+};
 
 interface DatePickerProps {
   value: string;
@@ -11,6 +43,9 @@ interface DatePickerProps {
 
 const DatePicker: React.FC<DatePickerProps> = ({ value, onChange }) => {
   const [showPicker, setShowPicker] = React.useState(false);
+  const manilaToday = getManilaToday();
+  const weekdays = getWeekdays(manilaToday);
+  const selectedDate = value ? new Date(value) : null;
 
   const handleChange = (_event: unknown, selectedDate?: Date) => {
     setShowPicker(false);
@@ -51,40 +86,55 @@ const DatePicker: React.FC<DatePickerProps> = ({ value, onChange }) => {
       </Pressable>
 
       {/* Quick Date Selection */}
-      <View style={styles.quickDates}>
-        {[1, 2, 3].map((daysAhead) => {
-          const date = new Date();
-          date.setDate(date.getDate() + daysAhead);
-          const dateStr = date.toISOString();
-          const isSelected = value && new Date(value).toDateString() === date.toDateString();
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.quickDates}
+      >
+        {weekdays.map((date) => {
+          const isSelected =
+            selectedDate?.toDateString() === date.toDateString();
+          const isPastDate = date < manilaToday;
 
           return (
             <Pressable
-              key={daysAhead}
-              style={[styles.quickDateItem, isSelected && styles.quickDateItemSelected]}
-              onPress={() => {
-                const nextDate = new Date();
-                nextDate.setDate(nextDate.getDate() + daysAhead);
-                nextDate.setHours(12, 0, 0, 0);
-                onChange(nextDate.toISOString());
-              }}
+              key={date.toISOString()}
+              style={[
+                styles.quickDateItem,
+                isSelected && styles.quickDateItemSelected,
+                isPastDate && styles.quickDateItemDisabled,
+              ]}
+              disabled={isPastDate}
+              onPress={() => onChange(date.toISOString())}
             >
-              <Text style={[styles.quickDateDay, isSelected && styles.quickDateDaySelected]}>
+              <Text
+                style={[
+                  styles.quickDateDay,
+                  isSelected && styles.quickDateDaySelected,
+                  isPastDate && styles.quickDateTextDisabled,
+                ]}
+              >
                 {date.toLocaleDateString("en-US", { weekday: "short" })}
               </Text>
-              <Text style={[styles.quickDateNum, isSelected && styles.quickDateNumSelected]}>
+              <Text
+                style={[
+                  styles.quickDateNum,
+                  isSelected && styles.quickDateNumSelected,
+                  isPastDate && styles.quickDateTextDisabled,
+                ]}
+              >
                 {date.getDate()}
               </Text>
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
 
       {showPicker && (
         <DateTimePicker
-          value={value ? new Date(value) : new Date()}
+          value={selectedDate ?? manilaToday}
           mode="date"
-          minimumDate={new Date()}
+          minimumDate={manilaToday}
           onChange={handleChange}
         />
       )}
@@ -131,9 +181,9 @@ const styles = StyleSheet.create({
   },
   quickDates: {
     flexDirection: "row",
-    justifyContent: "flex-start",
     gap: SPACING.sm,
     marginTop: SPACING.md,
+    paddingRight: SPACING.xs,
   },
   quickDateItem: {
     alignItems: "center",
@@ -146,6 +196,9 @@ const styles = StyleSheet.create({
   quickDateItemSelected: {
     backgroundColor: COLORS.primary,
   },
+  quickDateItemDisabled: {
+    opacity: 0.45,
+  },
   quickDateDay: {
     fontFamily: FONT_FAMILY.regular,
     fontSize: FONT_SIZE.body12,
@@ -154,6 +207,9 @@ const styles = StyleSheet.create({
   },
   quickDateDaySelected: {
     color: COLORS.white,
+  },
+  quickDateTextDisabled: {
+    color: COLORS.placeholder,
   },
   quickDateNum: {
     fontFamily: FONT_FAMILY.semibold,
