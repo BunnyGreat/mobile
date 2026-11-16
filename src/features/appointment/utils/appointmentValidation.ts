@@ -1,4 +1,5 @@
 import type { AppointmentFormValues } from "../types/appointment.types";
+import { isAppointmentPurpose } from "../constants/appointmentPurposes";
 
 export const allowedDocumentExtensions = ["pdf", "doc", "docx"];
 
@@ -23,7 +24,7 @@ export const getAppointmentValidationErrors = (
     | "supportingDocumentUri"
   >,
 ) => ({
-  purpose: !values.purpose?.trim()
+  purpose: !isAppointmentPurpose(values.purpose?.trim())
     ? "Please select the purpose of your appointment."
     : null,
   appointmentDate: !values.appointmentDate

@@ -7,9 +7,10 @@ import DatePicker from "./DatePicker";
 import PurposeDropdown from "./PurposeDropdown";
 import SupportingDocumentPicker from "./SupportingDocumentPicker";
 import TimeSlotSelector from "./TimeSlotSelector";
+import type { AppointmentPurpose } from "../constants/appointmentPurposes";
 
 interface AppointmentFormProps {
-  purpose: string;
+  purpose: AppointmentPurpose | "";
   concern: string;
   appointmentDate: string;
   appointmentTime: string;
@@ -22,7 +23,7 @@ interface AppointmentFormProps {
     appointmentTime: string | null;
     supportingDocument: string | null;
   };
-  onPurposeChange: (value: string) => void;
+  onPurposeChange: (value: AppointmentPurpose) => void;
   onConcernChange: (value: string) => void;
   onDateChange: (value: string) => void;
   onTimeChange: (value: string) => void;

@@ -1,5 +1,7 @@
+import type { AppointmentPurpose } from "../constants/appointmentPurposes";
+
 export interface AppointmentFormValues {
-  purpose: string;
+  purpose: AppointmentPurpose | "";
   concern: string;
   appointmentDate: string;
   appointmentTime: string;
@@ -39,7 +41,7 @@ export interface AppointmentStore {
   loading: boolean;
   error: string | null;
   success: boolean;
-  setPurpose: (purpose: string) => void;
+  setPurpose: (purpose: AppointmentPurpose | "") => void;
   setConcern: (concern: string) => void;
   setAppointmentDate: (date: string) => void;
   setAppointmentTime: (time: string) => void;

@@ -1,29 +1,32 @@
 import React from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING } from "../../../theme";
+import {
+  APPOINTMENT_PURPOSES,
+  type AppointmentPurpose,
+} from "../constants/appointmentPurposes";
 
 interface PurposeDropdownProps {
-  value: string;
-  onChange: (value: string) => void;
+  value: AppointmentPurpose | "";
+  onChange: (value: AppointmentPurpose) => void;
 }
-
-const purposes = [
-  { label: "Barangay Clearance", icon: "file-text" },
-  { label: "Certificate of Indigency", icon: "heart" },
-  { label: "Barangay Certification", icon: "award" },
-  { label: "Barangay ID", icon: "credit-card" },
-  { label: "Business Clearance", icon: "briefcase" },
-  { label: "Building Permit", icon: "home" },
-  { label: "Complaint / Mediation", icon: "message-square" },
-  { label: "Other", icon: "more-horizontal" },
-];
 
 const PurposeDropdown: React.FC<PurposeDropdownProps> = ({
   value,
   onChange,
 }) => {
   const [visible, setVisible] = React.useState(false);
+  const selectedPurpose = APPOINTMENT_PURPOSES.find(
+    (purpose) => purpose.label === value,
+  );
 
   return (
     <>
@@ -31,21 +34,17 @@ const PurposeDropdown: React.FC<PurposeDropdownProps> = ({
         <View style={styles.content}>
           {value ? (
             <>
-              {(() => {
-                const selected = purposes.find((p) => p.label === value);
-                return (
-                  <>
-                    <View style={styles.iconContainer}>
-                      <Feather
-                        name={(selected?.icon as keyof typeof Feather.glyphMap) || "file"}
-                        size={18}
-                        color={COLORS.primary}
-                      />
-                    </View>
-                    <Text style={styles.selectedText}>{value}</Text>
-                  </>
-                );
-              })()}
+              <View style={styles.iconContainer}>
+                <Feather
+                  name={
+                    (selectedPurpose?.icon as keyof typeof Feather.glyphMap) ||
+                    "file"
+                  }
+                  size={18}
+                  color={COLORS.primary}
+                />
+              </View>
+              <Text style={styles.selectedText}>{value}</Text>
             </>
           ) : (
             <Text style={styles.placeholderText}>Select purpose...</Text>
@@ -73,14 +72,19 @@ const PurposeDropdown: React.FC<PurposeDropdownProps> = ({
               </Text>
             </View>
 
-            <View style={styles.optionsList}>
-              {purposes.map((purpose, index) => (
+            <ScrollView
+              style={styles.optionsList}
+              contentContainerStyle={styles.optionsContent}
+              showsVerticalScrollIndicator={false}
+            >
+              {APPOINTMENT_PURPOSES.map((purpose, index) => (
                 <Pressable
                   key={purpose.label}
                   style={[
                     styles.optionItem,
                     index === 0 && styles.optionFirst,
-                    index === purposes.length - 1 && styles.optionLast,
+                    index === APPOINTMENT_PURPOSES.length - 1 &&
+                      styles.optionLast,
                     value === purpose.label && styles.optionSelected,
                   ]}
                   onPress={() => {
@@ -125,7 +129,7 @@ const PurposeDropdown: React.FC<PurposeDropdownProps> = ({
                   )}
                 </Pressable>
               ))}
-            </View>
+            </ScrollView>
           </View>
         </Pressable>
       </Modal>
@@ -160,6 +164,7 @@ const styles = StyleSheet.create({
     marginRight: SPACING.sm,
   },
   selectedText: {
+    flex: 1,
     fontFamily: FONT_FAMILY.medium,
     fontSize: FONT_SIZE.body14,
     color: COLORS.heading,
@@ -180,6 +185,7 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingBottom: SPACING.huge,
     maxHeight: "80%",
+    flexShrink: 1,
   },
   handle: {
     width: 40,
@@ -209,8 +215,12 @@ const styles = StyleSheet.create({
     color: COLORS.paragraph,
   },
   optionsList: {
+    flexShrink: 1,
+  },
+  optionsContent: {
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
   },
   optionItem: {
     flexDirection: "row",

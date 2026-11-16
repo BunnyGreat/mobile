@@ -25,7 +25,8 @@ import {
   clearAppointmentDraft,
 } from "../services/appointmentCache.service";
 import { useAppointmentStore } from "../store/appointment.store";
-import { validateAppointment } from "../utils/appointmentValidation";
+import { getAppointmentValidationErrors } from "../utils/appointmentValidation";
+import { isAppointmentPurpose } from "../constants/appointmentPurposes";
 
 const AppointmentScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -46,7 +47,11 @@ const AppointmentScreen: React.FC = () => {
       const draft = await loadAppointmentDraft();
       if (draft) {
         if (draft.purpose) {
-          useAppointmentStore.getState().setPurpose(draft.purpose);
+          useAppointmentStore
+            .getState()
+            .setPurpose(
+              isAppointmentPurpose(draft.purpose) ? draft.purpose : "",
+            );
         }
         if (draft.concern) {
           useAppointmentStore.getState().setConcern(draft.concern);
@@ -106,33 +111,8 @@ const AppointmentScreen: React.FC = () => {
   }, [error, clearState]);
 
   const validationErrors = useMemo(
-    () => ({
-      purpose: !form.purpose?.trim()
-        ? "Please select the purpose of your appointment."
-        : null,
-      appointmentDate: !form.appointmentDate
-        ? "Please select an appointment date."
-        : null,
-      appointmentTime: !form.appointmentTime
-        ? "Please select an available time slot."
-        : null,
-      supportingDocument:
-        !form.supportingDocumentName || !form.supportingDocumentUri
-          ? "Please upload a supporting document."
-          : null,
-    }),
-    [
-      form.purpose,
-      form.appointmentDate,
-      form.appointmentTime,
-      form.supportingDocumentName,
-      form.supportingDocumentUri,
-    ],
-  );
-
-  const validationError = useMemo(
     () =>
-      validateAppointment({
+      getAppointmentValidationErrors({
         purpose: form.purpose,
         appointmentDate: form.appointmentDate,
         appointmentTime: form.appointmentTime,
@@ -148,23 +128,12 @@ const AppointmentScreen: React.FC = () => {
     ],
   );
 
-  const isFormValid = useMemo(
-    () =>
-      Boolean(
-        form.purpose?.trim() &&
-        form.appointmentDate &&
-        form.appointmentTime &&
-        form.supportingDocumentName &&
-        form.supportingDocumentUri,
-      ),
-    [
-      form.purpose,
-      form.appointmentDate,
-      form.appointmentTime,
-      form.supportingDocumentName,
-      form.supportingDocumentUri,
-    ],
-  );
+  const validationError =
+    validationErrors.purpose ??
+    validationErrors.appointmentDate ??
+    validationErrors.appointmentTime ??
+    validationErrors.supportingDocument;
+  const isFormValid = validationError === null;
 
   const handleSubmit = async () => {
     if (loading || !isFormValid) {

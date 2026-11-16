@@ -4,10 +4,11 @@ import { Feather } from "@expo/vector-icons";
 import { COLORS, FONT_FAMILY, FONT_SIZE, SPACING, SHADOWS } from "../../../theme";
 import { SectionCard } from "../../../components/ui";
 import { formatAppointmentDate } from "../utils/formatAppointment";
+import type { AppointmentPurpose } from "../constants/appointmentPurposes";
 
 interface AppointmentSummaryCardProps {
   fullName: string;
-  purpose: string;
+  purpose: AppointmentPurpose | "";
   appointmentDate: string;
   appointmentTime: string;
   concern: string;
