@@ -1,10 +1,6 @@
 import { auth, db } from "../../../services/firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import {
-  deletePreviousPhoto,
-  resolveProfilePhotoUrl,
-  uploadPhoto,
-} from "./profilePhoto.service";
+import { resolveProfilePhotoUrl } from "./profilePhoto.service";
 import { getFileSignedOrPublicUrl } from "../../../services/supabase/storageUpload.service";
 import { saveProfileCache } from "./profileCache.service";
 import type {
@@ -126,8 +122,6 @@ export interface UpdateProfilePayload {
   barangay: string;
   municipality: string;
   province: string;
-  profilePhotoUrl?: string | null;
-  profilePhotoPath?: string | null;
 }
 
 export const getProfile = async (): Promise<Profile> => {
@@ -199,14 +193,6 @@ export const updateProfile = async (
     updatedAt: new Date().toISOString(),
   };
 
-  if (payload.profilePhotoUrl !== undefined) {
-    updateData["personalInformation.profilePhotoUrl"] = payload.profilePhotoUrl;
-  }
-
-  if (payload.profilePhotoPath !== undefined) {
-    updateData["personalInformation.profilePhotoPath"] = payload.profilePhotoPath;
-  }
-
   const userRef = doc(db, "users", currentUser.uid);
   await updateDoc(userRef, updateData);
 
@@ -241,25 +227,6 @@ export const updateProfile = async (
   await saveProfileCache(profile);
 
   return profile;
-};
-
-export const updateProfilePhoto = async (
-  compressedUri: string,
-  existingPhotoPath?: string | null,
-): Promise<{ profilePhotoUrl: string; profilePhotoPath: string }> => {
-  const currentUser = auth.currentUser;
-
-  if (!currentUser?.uid) {
-    throw new Error("[PROFILE] Authentication required.");
-  }
-
-  if (existingPhotoPath?.startsWith(`${currentUser.uid}/`)) {
-    await deletePreviousPhoto(existingPhotoPath);
-  } else if (existingPhotoPath) {
-    console.warn("[PROFILE] Skipped deleting a photo outside the authenticated user's storage path.");
-  }
-
-  return uploadPhoto(compressedUri, currentUser.uid);
 };
 
 export const refreshProfile = async (): Promise<Profile> => {

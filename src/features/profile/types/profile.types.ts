@@ -53,6 +53,5 @@ export interface ProfileStore {
   loadProfile: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateProfile: (profile: Profile) => void;
-  updateProfilePhoto: (profilePhotoUrl: string | null) => void;
   clearProfile: () => void;
 }

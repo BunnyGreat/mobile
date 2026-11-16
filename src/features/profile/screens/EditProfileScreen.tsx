@@ -19,13 +19,12 @@ import { Feather } from "@expo/vector-icons";
 import EditProfileForm, {
   EditProfileFormValues,
 } from "../components/EditProfileForm";
-import ProfilePhotoPicker from "../components/ProfilePhotoPicker";
+import ProfileAvatar from "../components/ProfileAvatar";
 import SaveButton from "../components/SaveButton";
 import { useProfile } from "../hooks/useProfile";
-import { useProfilePhoto } from "../hooks/useProfilePhoto";
 import { useRefreshProfile } from "../hooks/useRefreshProfile";
 import { useProfileStore } from "../store/profile.store";
-import { updateProfile, updateProfilePhoto } from "../services/profile.service";
+import { updateProfile } from "../services/profile.service";
 import { saveProfileCache } from "../services/profileCache.service";
 import { COLORS, SPACING, FONT_SIZE, FONT_FAMILY } from "../../../theme";
 
@@ -35,11 +34,6 @@ const EditProfileScreen: React.FC = () => {
   const { profile, loading, refresh } = useProfile();
   const navigation = useNavigation();
   const updateProfileState = useProfileStore((state) => state.updateProfile);
-  const {
-    photoUri,
-    pickImage,
-    loading: photoLoading,
-  } = useProfilePhoto(profile?.profilePhotoUrl);
   const { refreshing, refresh: onRefresh } = useRefreshProfile(refresh);
   const [formValues, setFormValues] = useState<EditProfileFormValues>({
     firstName: "",
@@ -86,7 +80,7 @@ const EditProfileScreen: React.FC = () => {
   >({});
   const [saving, setSaving] = useState(false);
 
-  const disabled = loading || photoLoading || saving || !profile;
+  const disabled = loading || saving || !profile;
 
   const handleChangeValue = <T extends keyof EditProfileFormValues>(
     field: T,
@@ -161,22 +155,6 @@ const EditProfileScreen: React.FC = () => {
     setSaving(true);
 
     try {
-      const hasNewPhoto = Boolean(
-        photoUri && profile.profilePhotoUrl !== photoUri,
-      );
-
-      let profilePhotoUrl = profile.profilePhotoUrl ?? null;
-      let profilePhotoPath = profile.profilePhotoPath ?? null;
-
-      if (hasNewPhoto && photoUri) {
-        const uploadResult = await updateProfilePhoto(
-          photoUri,
-          profile.profilePhotoPath,
-        );
-        profilePhotoUrl = uploadResult.profilePhotoUrl;
-        profilePhotoPath = uploadResult.profilePhotoPath;
-      }
-
       const updatedProfile = await updateProfile({
         firstName: formValues.firstName,
         middleName: formValues.middleName || null,
@@ -196,8 +174,6 @@ const EditProfileScreen: React.FC = () => {
         barangay: formValues.barangay || "",
         municipality: formValues.municipality || "",
         province: formValues.province || "",
-        profilePhotoUrl,
-        profilePhotoPath,
       });
 
       updateProfileState(updatedProfile);
@@ -249,10 +225,13 @@ const EditProfileScreen: React.FC = () => {
 
           {/* Hero Content */}
           <View style={styles.heroContent}>
-            <ProfilePhotoPicker
-              photoUrl={photoUri ?? profile?.profilePhotoUrl}
-              onPickPhoto={pickImage}
-            />
+            <View style={styles.avatarRing}>
+              <ProfileAvatar
+                uri={profile?.profilePhotoUrl}
+                imageStyle={styles.avatar}
+                showFailureMessage
+              />
+            </View>
           </View>
         </View>
 
@@ -283,9 +262,7 @@ const EditProfileScreen: React.FC = () => {
     [
       formValues,
       fieldErrors,
-      photoUri,
       profile?.profilePhotoUrl,
-      pickImage,
       disabled,
       navigation,
     ],
@@ -411,6 +388,25 @@ const styles = StyleSheet.create({
   heroContent: {
     alignItems: "center",
     paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xl,
+  },
+  avatarRing: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    overflow: "hidden",
+    borderWidth: 4,
+    borderColor: COLORS.white,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  avatar: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: COLORS.inputBackground,
   },
   heroTextContainer: {
     alignItems: "center",

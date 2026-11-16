@@ -31,22 +31,5 @@ export const useProfileStore = create<ProfileStore>((set) => ({
     }
   },
   updateProfile: (profile: Profile) => set({ profile }),
-  updateProfilePhoto: (profilePhotoUrl: string | null) =>
-    set((state) => {
-      if (!state.profile) {
-        return state;
-      }
-
-      return {
-        profile: {
-          ...state.profile,
-          profilePhotoUrl,
-          personalInformation: {
-            ...state.profile.personalInformation,
-            profilePhotoUrl,
-          },
-        },
-      };
-    }),
   clearProfile: () => set({ profile: null, loading: false, error: null }),
 }));
